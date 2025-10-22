@@ -1,0 +1,25 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation files
+blog.pdf
+.claude
+BACKEND_SUMMARY.md
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/

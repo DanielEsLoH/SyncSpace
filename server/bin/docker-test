@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+echo "Setting up test database..."
+DATABASE_URL="postgresql://postgres:postgres@db:5432/syncspace_test" RAILS_ENV=test bin/rails db:create db:migrate
+
+echo "Running tests..."
+DATABASE_URL="postgresql://postgres:postgres@db:5432/syncspace_test" RAILS_ENV=test bundle exec rspec "$@"
