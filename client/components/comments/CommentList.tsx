@@ -53,7 +53,7 @@ export function CommentList({
   // Optimistic updates for instant feedback
   const [optimisticComments, addOptimisticComment] = useOptimistic(
     comments,
-    (state, newComment: Comment) => [...state, newComment]
+    (state, newComment: Comment) => [newComment, ...state]
   );
 
   // Load comments on mount if not provided
@@ -93,7 +93,8 @@ export function CommentList({
             if (prev.some(c => c.id === comment.id)) {
               return prev;
             }
-            return [...prev, comment];
+            // Prepend new comment to show at the top
+            return [comment, ...prev];
           });
         }
       },
@@ -183,7 +184,8 @@ export function CommentList({
         if (withoutOptimistic.some((c) => c.id === response.comment.id)) {
           return withoutOptimistic;
         }
-        return [...withoutOptimistic, response.comment];
+        // Prepend new comment to show at the top
+        return [response.comment, ...withoutOptimistic];
       });
 
       if (replyingTo) {
