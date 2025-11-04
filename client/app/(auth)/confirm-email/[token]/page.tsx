@@ -41,9 +41,10 @@ export default function ConfirmEmailPage({ params }: ConfirmEmailPageProps) {
         setIsSuccess(true);
         setError(null);
 
-        // Redirect to feed after 2 seconds
+        // Redirect to feed after 2 seconds with full page reload
+        // This ensures the AuthContext picks up the stored credentials
         setTimeout(() => {
-          router.push('/feed');
+          window.location.href = '/feed';
         }, 2000);
       } catch (err: any) {
         console.error('Failed to confirm email:', err);

@@ -50,13 +50,28 @@ export default function ResetPasswordPage({ params }: ResetPasswordPageProps) {
     setIsLoading(true);
 
     try {
-      await authService.resetPassword({
+      const response = await authService.resetPassword({
         token,
         password: formData.password,
         password_confirmation: formData.password_confirmation,
       });
-      toast.success('Password reset successfully!');
-      router.push('/login');
+
+      // Backend returns tokens, so store them and log the user in
+      if (response.token && response.user) {
+        const { tokenStorage } = await import('@/lib/auth');
+        tokenStorage.setToken(response.token);
+        tokenStorage.setUser(response.user);
+
+        toast.success('Password reset successfully! Redirecting...');
+
+        // Use full page reload to ensure AuthContext picks up the credentials
+        setTimeout(() => {
+          window.location.href = '/feed';
+        }, 1000);
+      } else {
+        toast.success('Password reset successfully!');
+        router.push('/login');
+      }
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || 'Failed to reset password';
