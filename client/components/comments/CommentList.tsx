@@ -48,6 +48,7 @@ export function CommentList({
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // Optimistic updates for instant feedback
   const [optimisticComments, addOptimisticComment] = useOptimistic(
@@ -161,16 +162,28 @@ export function CommentList({
     setIsSubmitting(true);
 
     try {
-      // Submit to server
-      const response = await commentsService.createComment(postId, {
-        comment: {
-          description: previousText,
-        },
-      });
+      // Submit to server (either comment or reply)
+      const response = replyingTo
+        ? await commentsService.createReply(replyingTo.id, {
+            comment: {
+              description: previousText,
+            },
+          })
+        : await commentsService.createComment(postId, {
+            comment: {
+              description: previousText,
+            },
+          });
 
       // Replace optimistic comment with real one from server response
       setComments((prev) => [...prev, response.comment]);
-      toast.success('Comment added!');
+
+      if (replyingTo) {
+        toast.success('Reply added!');
+        setReplyingTo(null);
+      } else {
+        toast.success('Comment added!');
+      }
     } catch (error: any) {
       // Rollback on error
       setCommentText(previousText);
@@ -202,6 +215,20 @@ export function CommentList({
       console.error('Failed to delete comment:', error);
       toast.error(error.response?.data?.error || 'Failed to delete comment');
     }
+  };
+
+  /**
+   * Handle reply button click
+   */
+  const handleReply = (comment: Comment) => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to reply to comments');
+      return;
+    }
+    setReplyingTo(comment);
+    // Scroll to comment form
+    const form = document.querySelector('form[data-comment-form]');
+    form?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   /**
@@ -245,9 +272,27 @@ export function CommentList({
     <div className="space-y-6">
       {/* Comment Form */}
       {isAuthenticated ? (
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3" data-comment-form>
+          {/* Reply Indicator */}
+          {replyingTo && (
+            <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+              <span className="text-sm text-muted-foreground">
+                Replying to <span className="font-semibold">{replyingTo.user.name}</span>
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyingTo(null)}
+                className="h-6 px-2 text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
           <Textarea
-            placeholder="Add a comment..."
+            placeholder={replyingTo ? "Write your reply..." : "Add a comment..."}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             disabled={isSubmitting}
@@ -261,7 +306,7 @@ export function CommentList({
             className="gap-2"
           >
             <Send className="h-4 w-4" />
-            {isSubmitting ? 'Posting...' : 'Post Comment'}
+            {isSubmitting ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
           </Button>
         </form>
       ) : (
@@ -288,6 +333,7 @@ export function CommentList({
               postId={postId}
               onDelete={handleDelete}
               onReact={handleReact}
+              onReply={handleReply}
             />
           ))}
         </div>
