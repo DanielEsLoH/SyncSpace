@@ -92,6 +92,25 @@ module Api
           nil
         end
 
+        # Get last 3 comments for preview
+        last_three_comments = post.comments
+          .where(commentable_type: 'Post')
+          .order(created_at: :desc)
+          .limit(3)
+          .includes(:user)
+          .map do |comment|
+            {
+              id: comment.id,
+              description: comment.description,
+              user: {
+                id: comment.user.id,
+                name: comment.user.name,
+                profile_picture: comment.user.profile_picture
+              },
+              created_at: comment.created_at
+            }
+          end
+
         {
           id: post.id,
           title: post.title,
@@ -106,6 +125,7 @@ module Api
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
           reactions_count: post.reactions.count,
           comments_count: post.try(:comments_count) || post.comments.count,
+          last_three_comments: last_three_comments,
           user_reaction: user_reaction ? {
             id: user_reaction.id,
             reaction_type: user_reaction.reaction_type,
