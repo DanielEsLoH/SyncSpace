@@ -176,7 +176,15 @@ export function CommentList({
           });
 
       // Replace optimistic comment with real one from server response
-      setComments((prev) => [...prev, response.comment]);
+      setComments((prev) => {
+        // Remove optimistic comment (has temp Date.now() ID) and add real comment
+        const withoutOptimistic = prev.filter((c) => c.id !== optimisticComment.id);
+        // Check if real comment already exists (from WebSocket)
+        if (withoutOptimistic.some((c) => c.id === response.comment.id)) {
+          return withoutOptimistic;
+        }
+        return [...withoutOptimistic, response.comment];
+      });
 
       if (replyingTo) {
         toast.success('Reply added!');
@@ -185,7 +193,8 @@ export function CommentList({
         toast.success('Comment added!');
       }
     } catch (error: any) {
-      // Rollback on error
+      // Rollback on error - remove optimistic comment
+      setComments((prev) => prev.filter((c) => c.id !== optimisticComment.id));
       setCommentText(previousText);
       console.error('Failed to add comment:', error);
       toast.error(error.response?.data?.error || 'Failed to add comment');
