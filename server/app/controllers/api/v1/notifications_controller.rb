@@ -56,24 +56,41 @@ module Api
       private
 
       def notification_response(notification)
+        # Handle case where actor was deleted
+        actor_data = if notification.actor
+          {
+            id: notification.actor.id,
+            name: notification.actor.name,
+            profile_picture: notification.actor.profile_picture
+          }
+        else
+          {
+            id: nil,
+            name: 'Deleted User',
+            profile_picture: nil
+          }
+        end
+
         {
           id: notification.id,
           notification_type: notification.notification_type,
           read: notification.read?,
-          actor: {
-            id: notification.actor.id,
-            name: notification.actor.name,
-            profile_picture: notification.actor.profile_picture
-          },
+          actor: actor_data,
           notifiable: notifiable_data(notification),
           created_at: notification.created_at
         }
       end
 
       def notifiable_data(notification)
+        # Return nil if the notifiable object has been deleted
+        return nil if notification.notifiable.nil?
+
         case notification.notifiable_type
         when 'Comment'
           comment = notification.notifiable
+          # Additional safety check for associated post
+          return nil if comment.root_post.nil?
+
           {
             type: 'Comment',
             id: comment.id,

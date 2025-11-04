@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_21_144941) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_03_181242) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "comments", force: :cascade do |t|
     t.text "description"
@@ -21,7 +22,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_144941) do
     t.bigint "commentable_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "comments_count", default: 0, null: false
+    t.integer "reactions_count", default: 0, null: false
     t.index ["commentable_type", "commentable_id"], name: "index_comments_on_commentable"
+    t.index ["comments_count"], name: "index_comments_on_comments_count"
+    t.index ["reactions_count"], name: "index_comments_on_reactions_count"
     t.index ["user_id"], name: "index_comments_on_user_id"
   end
 
@@ -58,6 +63,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_144941) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "comments_count", default: 0, null: false
+    t.integer "reactions_count", default: 0, null: false
+    t.index ["comments_count"], name: "index_posts_on_comments_count"
+    t.index ["description"], name: "index_posts_on_description", opclass: :gin_trgm_ops, using: :gin
+    t.index ["reactions_count"], name: "index_posts_on_reactions_count"
+    t.index ["title"], name: "index_posts_on_title", opclass: :gin_trgm_ops, using: :gin
     t.index ["user_id"], name: "index_posts_on_user_id"
   end
 
@@ -94,8 +105,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_21_144941) do
     t.datetime "reset_password_sent_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "refresh_token"
+    t.datetime "refresh_token_expires_at"
+    t.jsonb "preferences", default: {}, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["name"], name: "index_users_on_name", opclass: :gin_trgm_ops, using: :gin
+    t.index ["preferences"], name: "index_users_on_preferences", using: :gin
+    t.index ["refresh_token"], name: "index_users_on_refresh_token", unique: true
+    t.index ["refresh_token_expires_at"], name: "index_users_on_refresh_token_expires_at"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token"
   end
 

@@ -2,12 +2,14 @@ module Api
   module V1
     class PostsController < ApplicationController
       skip_before_action :authenticate_request, only: [ :index, :show ]
+      before_action :authenticate_optional, only: [ :index, :show ]
       before_action :set_post, only: [ :show, :update, :destroy ]
       before_action :authorize_post_owner!, only: [ :update, :destroy ]
 
       # GET /api/v1/posts
       # Supports pagination with ?page=1&per_page=10
       # Supports filtering with ?user_id=1
+      # Supports search with ?search=query
       # Returns posts with counts and last 3 comments
       def index
         page = params[:page]&.to_i || 1
@@ -16,6 +18,21 @@ module Api
         # Build base query with filters
         base_query = Post.all
         base_query = base_query.where(user_id: params[:user_id]) if params[:user_id].present?
+
+        # Add search functionality
+        if params[:search].present?
+          search_term = "%#{params[:search]}%"
+          base_query = base_query.left_joins(:user, :tags)
+                                 .where('posts.title ILIKE ? OR posts.description ILIKE ? OR users.name ILIKE ? OR tags.name ILIKE ?',
+                                        search_term, search_term, search_term, search_term)
+                                 .distinct
+        end
+
+        # Filter by tag IDs if provided
+        if params[:tag_ids].present?
+          tag_ids = params[:tag_ids].is_a?(Array) ? params[:tag_ids] : [params[:tag_ids]]
+          base_query = base_query.joins(:post_tags).where(post_tags: { tag_id: tag_ids }).distinct
+        end
 
         # Get total count before adding group/select
         total_count = base_query.count
@@ -110,7 +127,13 @@ module Api
       private
 
       def set_post
-        @post = Post.includes(:user, :tags, comments: :user).find(params[:id])
+        @post = Post.includes(:user, :tags, :reactions, comments: :user)
+                    .left_joins(:comments, :reactions)
+                    .select('posts.*,
+                             COUNT(DISTINCT comments.id) as comments_count,
+                             COUNT(DISTINCT reactions.id) as reactions_count')
+                    .group("posts.id")
+                    .find(params[:id])
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Post not found" }, status: :not_found
       end
@@ -143,6 +166,13 @@ module Api
           post.last_three_comments.map { |c| comment_response(c) }
         end
 
+        # Get current user's reaction if authenticated
+        user_reaction = if @current_user
+          post.reactions.find_by(user: @current_user)
+        else
+          nil
+        end
+
         {
           id: post.id,
           title: post.title,
@@ -158,6 +188,18 @@ module Api
           reactions_count: post.try(:reactions_count) || post.reactions.count,
           comments_count: post.try(:comments_count) || post.comments.count,
           last_three_comments: comments_data,
+          user_reaction: user_reaction ? {
+            id: user_reaction.id,
+            reaction_type: user_reaction.reaction_type,
+            user: {
+              id: user_reaction.user.id,
+              name: user_reaction.user.name,
+              profile_picture: user_reaction.user.profile_picture
+            },
+            reactionable_type: user_reaction.reactionable_type,
+            reactionable_id: user_reaction.reactionable_id,
+            created_at: user_reaction.created_at
+          } : nil,
           created_at: post.created_at,
           updated_at: post.updated_at
         }

@@ -17,10 +17,13 @@ module Api
           reaction_type: params[:reaction_type]
         )
 
-        # Create notification if reaction was added (not removed)
-        if result[:action] == 'added' && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
+        # Create notification if reaction was added or changed (not removed)
+        if ['added', 'changed'].include?(result[:action]) && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
           create_notification_for_reaction(result[:reaction])
         end
+
+        # Broadcast reaction update to relevant channels
+        broadcast_reaction_update(result[:action])
 
         render json: {
           action: result[:action],
@@ -65,6 +68,59 @@ module Api
           notification_type: notification_type,
           actor: current_user
         )
+      end
+
+      def broadcast_reaction_update(action)
+        # Broadcast to the posts channel if it's a post reaction
+        if @reactionable.is_a?(Post)
+          # Reload associations to get fresh data
+          @reactionable.reload
+
+          ActionCable.server.broadcast('posts_channel', {
+            action: 'reaction_update',
+            post: post_response(@reactionable),
+            reaction_action: action
+          })
+        end
+      end
+
+      def post_response(post)
+        # Get current user's reaction if authenticated
+        user_reaction = if @current_user
+          post.reactions.find_by(user: @current_user)
+        else
+          nil
+        end
+
+        {
+          id: post.id,
+          title: post.title,
+          description: post.description,
+          picture: post.picture,
+          user: {
+            id: post.user.id,
+            name: post.user.name,
+            email: post.user.email,
+            profile_picture: post.user.profile_picture
+          },
+          tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
+          reactions_count: post.reactions.count,
+          comments_count: post.try(:comments_count) || post.comments.count,
+          user_reaction: user_reaction ? {
+            id: user_reaction.id,
+            reaction_type: user_reaction.reaction_type,
+            user: {
+              id: user_reaction.user.id,
+              name: user_reaction.user.name,
+              profile_picture: user_reaction.user.profile_picture
+            },
+            reactionable_type: user_reaction.reactionable_type,
+            reactionable_id: user_reaction.reactionable_id,
+            created_at: user_reaction.created_at
+          } : nil,
+          created_at: post.created_at,
+          updated_at: post.updated_at
+        }
       end
     end
   end

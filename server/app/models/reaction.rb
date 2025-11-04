@@ -1,6 +1,6 @@
 class Reaction < ApplicationRecord
   belongs_to :user
-  belongs_to :reactionable, polymorphic: true
+  belongs_to :reactionable, polymorphic: true, counter_cache: :reactions_count
 
   # Constants
   REACTION_TYPES = %w[like love dislike].freeze
@@ -18,12 +18,21 @@ class Reaction < ApplicationRecord
 
   # Class methods
   def self.toggle(user:, reactionable:, reaction_type:)
-    reaction = find_by(user: user, reactionable: reactionable, reaction_type: reaction_type)
+    # Find any existing reaction by this user on this reactionable
+    existing_reaction = find_by(user: user, reactionable: reactionable)
 
-    if reaction
-      reaction.destroy
-      { action: 'removed', reaction: nil }
+    if existing_reaction
+      # If clicking the same reaction type, remove it (toggle off)
+      if existing_reaction.reaction_type == reaction_type
+        existing_reaction.destroy
+        { action: 'removed', reaction: nil }
+      else
+        # If clicking a different reaction type, update it
+        existing_reaction.update(reaction_type: reaction_type)
+        { action: 'changed', reaction: existing_reaction }
+      end
     else
+      # No existing reaction, create a new one
       reaction = create(user: user, reactionable: reactionable, reaction_type: reaction_type)
       { action: 'added', reaction: reaction }
     end

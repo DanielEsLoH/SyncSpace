@@ -1,0 +1,118 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success!",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "search": "Search",
+    "close": "Close",
+    "back": "Back"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "passwordConfirmation": "Confirm Password",
+    "name": "Name",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "confirmEmail": "Confirm Email",
+    "loginSuccess": "Login successful!",
+    "registerSuccess": "Registration successful! Please check your email.",
+    "logoutSuccess": "Logout successful",
+    "invalidCredentials": "Invalid email or password",
+    "emailNotConfirmed": "Please confirm your email first"
+  },
+  "nav": {
+    "home": "Home",
+    "feed": "Feed",
+    "profile": "Profile",
+    "myPosts": "My Posts",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "darkMode": "Dark Mode",
+    "language": "Language"
+  },
+  "posts": {
+    "title": "Title",
+    "description": "Description",
+    "createPost": "Create Post",
+    "editPost": "Edit Post",
+    "deletePost": "Delete Post",
+    "newPost": "New Post",
+    "noPosts": "No posts yet",
+    "tags": "Tags",
+    "addTags": "Add tags",
+    "uploadImage": "Upload Image",
+    "postCreated": "Post created successfully!",
+    "postUpdated": "Post updated successfully!",
+    "postDeleted": "Post deleted successfully!",
+    "newPostsAvailable": "new posts available",
+    "clickToLoad": "Click to load"
+  },
+  "comments": {
+    "addComment": "Add a comment",
+    "editComment": "Edit Comment",
+    "deleteComment": "Delete Comment",
+    "reply": "Reply",
+    "replies": "Replies",
+    "noComments": "No comments yet",
+    "commentAdded": "Comment added!",
+    "commentUpdated": "Comment updated!",
+    "commentDeleted": "Comment deleted!",
+    "showReplies": "Show replies",
+    "hideReplies": "Hide replies"
+  },
+  "reactions": {
+    "like": "Like",
+    "love": "Love",
+    "dislike": "Dislike"
+  },
+  "notifications": {
+    "notifications": "Notifications",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "No notifications",
+    "commentOnPost": "commented on your post",
+    "replyToComment": "replied to your comment",
+    "mentionedYou": "mentioned you",
+    "reactedToPost": "reacted to your post",
+    "reactedToComment": "reacted to your comment"
+  },
+  "search": {
+    "searchPlaceholder": "Search posts, users, tags...",
+    "filterByTitle": "Filter by title",
+    "filterByUser": "Filter by user",
+    "filterByTag": "Filter by tag",
+    "noResults": "No results found",
+    "advancedSearch": "Advanced Search"
+  },
+  "profile": {
+    "profile": "Profile",
+    "editProfile": "Edit Profile",
+    "bio": "Bio",
+    "joinedOn": "Joined on",
+    "stats": "Statistics",
+    "totalPosts": "Total Posts",
+    "totalReactions": "Total Reactions",
+    "totalComments": "Total Comments",
+    "profileUpdated": "Profile updated successfully!"
+  },
+  "errors": {
+    "generic_title": "Something went wrong",
+    "generic_message": "An unexpected error occurred. Please try again or return to the home page.",
+    "post_not_found": "Post not found",
+    "post_not_found_message": "The post you're looking for doesn't exist or has been deleted.",
+    "post_error_title": "Error loading post",
+    "post_error_message": "We couldn't load this post. Please try again.",
+    "notifications_error_title": "Error loading notifications",
+    "notifications_error_message": "We couldn't load your notifications. Please try again.",
+    "retry": "Try Again",
+    "goHome": "Go Home"
+  }
+}

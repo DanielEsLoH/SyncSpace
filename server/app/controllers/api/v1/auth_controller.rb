@@ -1,7 +1,7 @@
 module Api
   module V1
     class AuthController < ApplicationController
-      skip_before_action :authenticate_request, only: [:register, :login, :confirm_email, :forgot_password, :reset_password]
+      skip_before_action :authenticate_request, only: [:register, :login, :confirm_email, :forgot_password, :reset_password, :refresh]
 
       # POST /api/v1/auth/register
       def register
@@ -27,9 +27,13 @@ module Api
             return render json: { error: 'Please confirm your email address first' }, status: :unauthorized
           end
 
-          token = JsonWebToken.encode(user_id: user.id)
+          # Generate both access and refresh tokens
+          access_token = JsonWebToken.encode(user_id: user.id)
+          refresh_token = user.generate_refresh_token!
+
           render json: {
-            token: token,
+            token: access_token,
+            refresh_token: refresh_token,
             user: user_response(user)
           }, status: :ok
         else
@@ -45,10 +49,14 @@ module Api
           if user.confirmed?
             render json: { message: 'Email already confirmed' }, status: :ok
           elsif user.confirm!
-            token = JsonWebToken.encode(user_id: user.id)
+            # Generate both access and refresh tokens
+            access_token = JsonWebToken.encode(user_id: user.id)
+            refresh_token = user.generate_refresh_token!
+
             render json: {
               message: 'Email confirmed successfully',
-              token: token,
+              token: access_token,
+              refresh_token: refresh_token,
               user: user_response(user)
             }, status: :ok
           else
@@ -80,10 +88,15 @@ module Api
         if user && user.reset_password_token_valid?
           if user.update(password: params[:password], password_confirmation: params[:password_confirmation])
             user.update(reset_password_token: nil, reset_password_sent_at: nil)
-            token = JsonWebToken.encode(user_id: user.id)
+
+            # Generate both access and refresh tokens
+            access_token = JsonWebToken.encode(user_id: user.id)
+            refresh_token = user.generate_refresh_token!
+
             render json: {
               message: 'Password reset successfully',
-              token: token,
+              token: access_token,
+              refresh_token: refresh_token,
               user: user_response(user)
             }, status: :ok
           else
@@ -97,6 +110,51 @@ module Api
       # GET /api/v1/auth/me
       def me
         render json: { user: user_response(current_user) }, status: :ok
+      end
+
+      # POST /api/v1/auth/refresh
+      #
+      # Exchange a valid refresh token for new access and refresh tokens.
+      # This implements rotating refresh tokens for enhanced security.
+      #
+      # Request body:
+      #   { "refresh_token": "eyJhbGciOiJIUzI1..." }
+      #
+      # Response:
+      #   { "token": "new_access_token", "refresh_token": "new_refresh_token" }
+      def refresh
+        refresh_token = params[:refresh_token]
+
+        unless refresh_token.present?
+          return render json: { error: 'Refresh token is required' }, status: :bad_request
+        end
+
+        # Decode and validate the refresh token
+        decoded = JsonWebToken.decode_refresh_token(refresh_token)
+
+        unless decoded
+          return render json: { error: 'Invalid refresh token' }, status: :unauthorized
+        end
+
+        # Find the user and verify the stored refresh token matches
+        user = User.find_by(id: decoded[:user_id])
+
+        unless user && user.refresh_token == refresh_token && user.refresh_token_valid?
+          return render json: { error: 'Refresh token expired or invalid' }, status: :unauthorized
+        end
+
+        # Generate new tokens (rotating refresh token)
+        new_access_token = JsonWebToken.encode(user_id: user.id)
+        new_refresh_token = user.generate_refresh_token!
+
+        render json: {
+          token: new_access_token,
+          refresh_token: new_refresh_token,
+          message: 'Tokens refreshed successfully'
+        }, status: :ok
+      rescue => e
+        Rails.logger.error("Refresh token error: #{e.message}")
+        render json: { error: 'Failed to refresh token' }, status: :internal_server_error
       end
 
       private
