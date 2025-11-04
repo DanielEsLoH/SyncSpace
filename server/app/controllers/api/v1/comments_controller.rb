@@ -27,6 +27,11 @@ module Api
           # Broadcast new comment via ActionCable
           broadcast_comment(comment, 'new_comment')
 
+          # If this is a comment on a post, broadcast post update to feed
+          if comment.commentable_type == 'Post'
+            broadcast_post_update(comment.commentable)
+          end
+
           render json: {
             message: 'Comment created successfully',
             comment: comment_response(comment)
@@ -56,6 +61,7 @@ module Api
         comment_id = @comment.id
         commentable_type = @comment.commentable_type
         commentable_id = @comment.commentable_id
+        post = commentable_type == 'Post' ? @comment.commentable : nil
 
         @comment.destroy
 
@@ -65,6 +71,8 @@ module Api
             action: 'delete_comment',
             comment_id: comment_id
           })
+          # Also broadcast post update to feed
+          broadcast_post_update(post) if post
         else
           ActionCable.server.broadcast("comment_#{commentable_id}_replies", {
             action: 'delete_comment',
@@ -139,6 +147,72 @@ module Api
             comment: comment_response(comment)
           })
         end
+      end
+
+      def broadcast_post_update(post)
+        # Reload the post to get fresh comment count and last comments
+        post.reload
+
+        # Get last 3 comments for preview
+        last_three_comments = post.comments
+          .where(commentable_type: 'Post')
+          .order(created_at: :desc)
+          .limit(3)
+          .includes(:user)
+          .map do |comment|
+            {
+              id: comment.id,
+              description: comment.description,
+              user: {
+                id: comment.user.id,
+                name: comment.user.name,
+                profile_picture: comment.user.profile_picture
+              },
+              created_at: comment.created_at
+            }
+          end
+
+        # Get current user's reaction if authenticated
+        user_reaction = if current_user
+          post.reactions.find_by(user: current_user)
+        else
+          nil
+        end
+
+        # Broadcast updated post data to PostsChannel
+        ActionCable.server.broadcast('posts_channel', {
+          action: 'update_post',
+          post: {
+            id: post.id,
+            title: post.title,
+            description: post.description,
+            picture: post.picture,
+            user: {
+              id: post.user.id,
+              name: post.user.name,
+              email: post.user.email,
+              profile_picture: post.user.profile_picture
+            },
+            tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
+            reactions_count: post.reactions.count,
+            comments_count: post.comments_count,
+            last_three_comments: last_three_comments,
+            user_reaction: user_reaction ? {
+              id: user_reaction.id,
+              reaction_type: user_reaction.reaction_type,
+              user: {
+                id: user_reaction.user.id,
+                name: user_reaction.user.name,
+                profile_picture: user_reaction.user.profile_picture
+              },
+              reactionable_type: user_reaction.reactionable_type,
+              reactionable_id: user_reaction.reactionable_id,
+              created_at: user_reaction.created_at
+            } : nil,
+            created_at: post.created_at,
+            updated_at: post.updated_at
+          }
+        })
       end
 
       def comment_response(comment)
