@@ -1,0 +1,118 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "success": "¡Éxito!",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "submit": "Enviar",
+    "search": "Buscar",
+    "close": "Cerrar",
+    "back": "Volver"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "passwordConfirmation": "Confirmar contraseña",
+    "name": "Nombre",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer contraseña",
+    "confirmEmail": "Confirmar correo",
+    "loginSuccess": "¡Inicio de sesión exitoso!",
+    "registerSuccess": "¡Registro exitoso! Por favor revisa tu correo.",
+    "logoutSuccess": "Sesión cerrada exitosamente",
+    "invalidCredentials": "Correo o contraseña inválidos",
+    "emailNotConfirmed": "Por favor confirma tu correo primero"
+  },
+  "nav": {
+    "home": "Inicio",
+    "feed": "Feed",
+    "profile": "Perfil",
+    "myPosts": "Mis Posts",
+    "notifications": "Notificaciones",
+    "settings": "Configuración",
+    "darkMode": "Modo Oscuro",
+    "language": "Idioma"
+  },
+  "posts": {
+    "title": "Título",
+    "description": "Descripción",
+    "createPost": "Crear Post",
+    "editPost": "Editar Post",
+    "deletePost": "Eliminar Post",
+    "newPost": "Nuevo Post",
+    "noPosts": "No hay posts aún",
+    "tags": "Etiquetas",
+    "addTags": "Agregar etiquetas",
+    "uploadImage": "Subir imagen",
+    "postCreated": "¡Post creado exitosamente!",
+    "postUpdated": "¡Post actualizado exitosamente!",
+    "postDeleted": "¡Post eliminado exitosamente!",
+    "newPostsAvailable": "nuevos posts disponibles",
+    "clickToLoad": "Click para cargar"
+  },
+  "comments": {
+    "addComment": "Agregar un comentario",
+    "editComment": "Editar comentario",
+    "deleteComment": "Eliminar comentario",
+    "reply": "Responder",
+    "replies": "Respuestas",
+    "noComments": "No hay comentarios aún",
+    "commentAdded": "¡Comentario agregado!",
+    "commentUpdated": "¡Comentario actualizado!",
+    "commentDeleted": "¡Comentario eliminado!",
+    "showReplies": "Mostrar respuestas",
+    "hideReplies": "Ocultar respuestas"
+  },
+  "reactions": {
+    "like": "Me gusta",
+    "love": "Me encanta",
+    "dislike": "No me gusta"
+  },
+  "notifications": {
+    "notifications": "Notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "noNotifications": "No hay notificaciones",
+    "commentOnPost": "comentó en tu post",
+    "replyToComment": "respondió a tu comentario",
+    "mentionedYou": "te mencionó",
+    "reactedToPost": "reaccionó a tu post",
+    "reactedToComment": "reaccionó a tu comentario"
+  },
+  "search": {
+    "searchPlaceholder": "Buscar posts, usuarios, etiquetas...",
+    "filterByTitle": "Filtrar por título",
+    "filterByUser": "Filtrar por usuario",
+    "filterByTag": "Filtrar por etiqueta",
+    "noResults": "No se encontraron resultados",
+    "advancedSearch": "Búsqueda Avanzada"
+  },
+  "profile": {
+    "profile": "Perfil",
+    "editProfile": "Editar Perfil",
+    "bio": "Biografía",
+    "joinedOn": "Se unió el",
+    "stats": "Estadísticas",
+    "totalPosts": "Posts Totales",
+    "totalReactions": "Reacciones Totales",
+    "totalComments": "Comentarios Totales",
+    "profileUpdated": "¡Perfil actualizado exitosamente!"
+  },
+  "errors": {
+    "generic_title": "Algo salió mal",
+    "generic_message": "Ocurrió un error inesperado. Por favor intenta de nuevo o regresa a la página principal.",
+    "post_not_found": "Post no encontrado",
+    "post_not_found_message": "El post que buscas no existe o ha sido eliminado.",
+    "post_error_title": "Error al cargar el post",
+    "post_error_message": "No pudimos cargar este post. Por favor intenta de nuevo.",
+    "notifications_error_title": "Error al cargar notificaciones",
+    "notifications_error_message": "No pudimos cargar tus notificaciones. Por favor intenta de nuevo.",
+    "retry": "Intentar de nuevo",
+    "goHome": "Ir al inicio"
+  }
+}

@@ -1,11 +1,14 @@
 class Comment < ApplicationRecord
   belongs_to :user
-  belongs_to :commentable, polymorphic: true
+  belongs_to :commentable, polymorphic: true, counter_cache: :comments_count
 
   # A comment can have many replies (comments on this comment)
   has_many :comments, as: :commentable, dependent: :destroy
   has_many :reactions, as: :reactionable, dependent: :destroy
   has_many :notifications, as: :notifiable, dependent: :destroy
+
+  # Callbacks
+  before_save :sanitize_content
 
   # Validations
   validates :description, presence: true, length: { minimum: 1, maximum: 2000 }
@@ -16,12 +19,11 @@ class Comment < ApplicationRecord
   scope :with_user, -> { includes(:user) }
 
   # Instance methods
-  def reactions_count
-    reactions.count
-  end
+  # Note: reactions_count now uses counter_cache column directly
 
+  # Alias for better readability - using a method to avoid migration issues
   def replies_count
-    comments.count
+    comments_count
   end
 
   # Check if this is a top-level comment (belongs to a post)
@@ -48,6 +50,17 @@ class Comment < ApplicationRecord
   def cannot_be_self_parent
     if commentable_type == 'Comment' && commentable_id == id
       errors.add(:commentable, "cannot be itself")
+    end
+  end
+
+  # Sanitize user input to prevent XSS attacks
+  def sanitize_content
+    if description.present?
+      self.description = ActionController::Base.helpers.sanitize(
+        description,
+        tags: %w[p br strong em code],
+        attributes: []
+      )
     end
   end
 end

@@ -11,6 +11,7 @@ Rails.application.routes.draw do
       # Authentication
       post 'auth/register', to: 'auth#register'
       post 'auth/login', to: 'auth#login'
+      post 'auth/refresh', to: 'auth#refresh'
       get 'auth/confirm/:token', to: 'auth#confirm_email'
       post 'auth/forgot_password', to: 'auth#forgot_password'
       post 'auth/reset_password', to: 'auth#reset_password'
@@ -40,17 +41,21 @@ Rails.application.routes.draw do
       # Notifications
       resources :notifications, only: [:index] do
         member do
-          put 'mark_read'
+          patch 'read', to: 'notifications#mark_read'
         end
         collection do
-          put 'mark_all_read'
+          patch 'mark_all_read'
         end
       end
 
       # Users
       resources :users, only: [:show, :update] do
+        collection do
+          get 'search'
+        end
         member do
           get 'posts'
+          patch 'preferences', to: 'users#update_preferences'
         end
       end
 

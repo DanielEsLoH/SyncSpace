@@ -142,6 +142,13 @@ module Api
       end
 
       def comment_response(comment)
+        # Get current user's reaction if authenticated
+        user_reaction = if @current_user
+          comment.reactions.find_by(user: @current_user)
+        else
+          nil
+        end
+
         {
           id: comment.id,
           description: comment.description,
@@ -155,6 +162,18 @@ module Api
           },
           reactions_count: comment.reactions.count,
           replies_count: comment.comments.count,
+          user_reaction: user_reaction ? {
+            id: user_reaction.id,
+            reaction_type: user_reaction.reaction_type,
+            user: {
+              id: user_reaction.user.id,
+              name: user_reaction.user.name,
+              profile_picture: user_reaction.user.profile_picture
+            },
+            reactionable_type: user_reaction.reactionable_type,
+            reactionable_id: user_reaction.reactionable_id,
+            created_at: user_reaction.created_at
+          } : nil,
           created_at: comment.created_at,
           updated_at: comment.updated_at
         }
