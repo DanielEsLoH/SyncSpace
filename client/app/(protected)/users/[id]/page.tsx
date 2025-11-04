@@ -139,7 +139,13 @@ export default function UserProfilePage() {
       onNewPost: (newPost: Post) => {
         // Add new post if it belongs to this user
         if (newPost.user?.id === userId) {
-          setPosts((prev) => [newPost, ...prev]);
+          setPosts((prev) => {
+            // Check if post already exists to prevent duplicates
+            if (prev.some(p => p.id === newPost.id)) {
+              return prev;
+            }
+            return [newPost, ...prev];
+          });
         }
       },
       onUpdatePost: (updatedPost: Post) => {
