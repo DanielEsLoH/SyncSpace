@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useOptimistic, useEffect } from 'react';
+import { useState, useOptimistic, useEffect, startTransition } from 'react';
 import { Comment } from '@/types';
 import { CommentItem } from './CommentItem';
 import { Button } from '@/components/ui/button';
@@ -152,8 +152,10 @@ export function CommentList({
       updated_at: new Date().toISOString(),
     };
 
-    // Add optimistically
-    addOptimisticComment(optimisticComment);
+    // Add optimistically (must be wrapped in startTransition)
+    startTransition(() => {
+      addOptimisticComment(optimisticComment);
+    });
     const previousText = commentText;
     setCommentText('');
     setIsSubmitting(true);
