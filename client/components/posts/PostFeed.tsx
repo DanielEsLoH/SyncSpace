@@ -85,11 +85,21 @@ export function PostFeed({
         const isAtTop = window.scrollY < 100;
 
         if (isAtTop) {
-          // Auto-insert at the top
-          setPosts((prev) => [newPost, ...prev]);
+          // Auto-insert at the top (check for duplicates)
+          setPosts((prev) => {
+            if (prev.some(p => p.id === newPost.id)) {
+              return prev;
+            }
+            return [newPost, ...prev];
+          });
         } else {
-          // Show banner notification
-          setPendingNewPosts((prev) => [newPost, ...prev]);
+          // Show banner notification (check for duplicates)
+          setPendingNewPosts((prev) => {
+            if (prev.some(p => p.id === newPost.id)) {
+              return prev;
+            }
+            return [newPost, ...prev];
+          });
           setShowNewPostsBanner(true);
         }
       },
