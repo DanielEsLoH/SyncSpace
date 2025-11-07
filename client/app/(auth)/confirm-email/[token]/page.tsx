@@ -47,7 +47,6 @@ export default function ConfirmEmailPage({ params }: ConfirmEmailPageProps) {
           window.location.href = '/feed';
         }, 2000);
       } catch (err: any) {
-        console.error('Failed to confirm email:', err);
         setError(
           err.response?.data?.error || 'Failed to confirm email. The link may be invalid or expired.'
         );

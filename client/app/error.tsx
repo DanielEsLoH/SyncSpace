@@ -24,7 +24,6 @@ export default function Error({
 
   useEffect(() => {
     // Log to console in development
-    console.error('Application error:', error);
 
     // In production, send to error tracking service
     // Example: Sentry.captureException(error);

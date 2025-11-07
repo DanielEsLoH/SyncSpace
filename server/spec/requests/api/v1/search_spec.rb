@@ -26,7 +26,7 @@ RSpec.describe 'Api::V1::Search', type: :request do
   end
 
   before do
-    post1.tags << [ruby_tag, rails_tag]
+    post1.tags << [ ruby_tag, rails_tag ]
     post2.tags << python_tag
     post4.tags << ruby_tag
   end
@@ -83,7 +83,7 @@ RSpec.describe 'Api::V1::Search', type: :request do
         # Matches both "John Doe" (2 posts) and "Bob Johnson" (1 post) = 3 posts total
         expect(json_response[:posts].size).to eq(3)
         user_names = json_response[:posts].map { |p| p[:user][:name] }.uniq.sort
-        expect(user_names).to match_array(['Bob Johnson', 'John Doe'])
+        expect(user_names).to match_array([ 'Bob Johnson', 'John Doe' ])
       end
 
       it 'returns posts by user email' do

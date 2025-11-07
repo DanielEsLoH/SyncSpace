@@ -1,9 +1,9 @@
 module Api
   module V1
     class CommentsController < ApplicationController
-      before_action :set_commentable, only: [:index, :create]
-      before_action :set_comment, only: [:update, :destroy]
-      before_action :authorize_comment_owner!, only: [:update, :destroy]
+      before_action :set_commentable, only: [ :index, :create ]
+      before_action :set_comment, only: [ :update, :destroy ]
+      before_action :authorize_comment_owner!, only: [ :update, :destroy ]
 
       # GET /api/v1/posts/:post_id/comments
       # GET /api/v1/comments/:comment_id/comments (replies)
@@ -24,16 +24,19 @@ module Api
           # Create notification for the commentable owner
           create_notification_for_comment(comment)
 
+          # Create mention notifications for @mentioned users
+          MentionService.process_mentions(comment, current_user)
+
           # Broadcast new comment via ActionCable
-          broadcast_comment(comment, 'new_comment')
+          broadcast_comment(comment, "new_comment")
 
           # If this is a comment on a post, broadcast post update to feed
-          if comment.commentable_type == 'Post'
+          if comment.commentable_type == "Post"
             broadcast_post_update(comment.commentable)
           end
 
           render json: {
-            message: 'Comment created successfully',
+            message: "Comment created successfully",
             comment: comment_response(comment)
           }, status: :created
         else
@@ -44,11 +47,14 @@ module Api
       # PUT /api/v1/comments/:id
       def update
         if @comment.update(comment_params)
+          # Create mention notifications for @mentioned users (in case new mentions were added)
+          MentionService.process_mentions(@comment, current_user)
+
           # Broadcast comment update
-          broadcast_comment(@comment, 'update_comment')
+          broadcast_comment(@comment, "update_comment")
 
           render json: {
-            message: 'Comment updated successfully',
+            message: "Comment updated successfully",
             comment: comment_response(@comment)
           }, status: :ok
         else
@@ -61,26 +67,39 @@ module Api
         comment_id = @comment.id
         commentable_type = @comment.commentable_type
         commentable_id = @comment.commentable_id
-        post = commentable_type == 'Post' ? @comment.commentable : nil
+        post = commentable_type == "Post" ? @comment.commentable : nil
+        root_post = @comment.root_post
 
         @comment.destroy
 
         # Broadcast comment deletion
-        if commentable_type == 'Post'
+        if commentable_type == "Post"
           ActionCable.server.broadcast("post_#{commentable_id}_comments", {
-            action: 'delete_comment',
+            action: "delete_comment",
             comment_id: comment_id
           })
           # Also broadcast post update to feed
           broadcast_post_update(post) if post
         else
+          # This is a reply to a comment
+          # Broadcast to the specific comment's replies channel
           ActionCable.server.broadcast("comment_#{commentable_id}_replies", {
-            action: 'delete_comment',
+            action: "delete_comment",
             comment_id: comment_id
           })
+
+          # ALSO broadcast to the root post's comments channel so all viewers get the update
+          if root_post
+            ActionCable.server.broadcast("post_#{root_post.id}_comments", {
+              action: "delete_comment",
+              comment_id: comment_id
+            })
+            # Update the post's comment count in the feed
+            broadcast_post_update(root_post)
+          end
         end
 
-        render json: { message: 'Comment deleted successfully' }, status: :ok
+        render json: { message: "Comment deleted successfully" }, status: :ok
       end
 
       private
@@ -92,18 +111,18 @@ module Api
           @commentable = Comment.find(params[:comment_id])
         end
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Commentable not found' }, status: :not_found
+        render json: { error: "Commentable not found" }, status: :not_found
       end
 
       def set_comment
         @comment = Comment.find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Comment not found' }, status: :not_found
+        render json: { error: "Comment not found" }, status: :not_found
       end
 
       def authorize_comment_owner!
         unless @comment.user_id == current_user.id
-          render json: { error: 'Forbidden: You can only modify your own comments' }, status: :forbidden
+          render json: { error: "Forbidden: You can only modify your own comments" }, status: :forbidden
         end
       end
 
@@ -113,7 +132,7 @@ module Api
 
       def create_notification_for_comment(comment)
         # Determine the recipient
-        recipient = if comment.commentable_type == 'Post'
+        recipient = if comment.commentable_type == "Post"
           comment.commentable.user
         else # Comment on Comment
           comment.commentable.user
@@ -122,7 +141,7 @@ module Api
         # Don't notify yourself
         return if recipient.id == current_user.id
 
-        notification_type = comment.commentable_type == 'Post' ? 'comment_on_post' : 'reply_to_comment'
+        notification_type = comment.commentable_type == "Post" ? "comment_on_post" : "reply_to_comment"
 
         Notification.create(
           user: recipient,
@@ -134,7 +153,7 @@ module Api
 
       def broadcast_comment(comment, action)
         # Broadcast to the appropriate channel based on commentable type
-        if comment.commentable_type == 'Post'
+        if comment.commentable_type == "Post"
           # This is a comment on a post
           ActionCable.server.broadcast("post_#{comment.commentable_id}_comments", {
             action: action,
@@ -142,10 +161,21 @@ module Api
           })
         else
           # This is a reply to a comment
+          # Broadcast to the specific comment's replies channel
           ActionCable.server.broadcast("comment_#{comment.commentable_id}_replies", {
             action: action,
             comment: comment_response(comment)
           })
+
+          # ALSO broadcast to the root post's comments channel so all viewers get the update
+          # Find the root post by traversing up the comment chain
+          root_post = comment.root_post
+          if root_post
+            ActionCable.server.broadcast("post_#{root_post.id}_comments", {
+              action: action,
+              comment: comment_response(comment)
+            })
+          end
         end
       end
 
@@ -155,7 +185,7 @@ module Api
 
         # Get last 3 comments for preview
         last_three_comments = post.comments
-          .where(commentable_type: 'Post')
+          .where(commentable_type: "Post")
           .order(created_at: :desc)
           .limit(3)
           .includes(:user)
@@ -180,8 +210,8 @@ module Api
         end
 
         # Broadcast updated post data to PostsChannel
-        ActionCable.server.broadcast('posts_channel', {
-          action: 'update_post',
+        ActionCable.server.broadcast("posts_channel", {
+          action: "update_post",
           post: {
             id: post.id,
             title: post.title,
@@ -195,7 +225,7 @@ module Api
             },
             tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
             reactions_count: post.reactions.count,
-            comments_count: post.comments_count,
+            comments_count: post.comments.where(commentable_type: "Post").count,
             last_three_comments: last_three_comments,
             user_reaction: user_reaction ? {
               id: user_reaction.id,
@@ -217,8 +247,8 @@ module Api
 
       def comment_response(comment)
         # Get current user's reaction if authenticated
-        user_reaction = if @current_user
-          comment.reactions.find_by(user: @current_user)
+        user_reaction = if current_user
+          comment.reactions.find_by(user: current_user)
         else
           nil
         end
@@ -231,7 +261,6 @@ module Api
           user: {
             id: comment.user.id,
             name: comment.user.name,
-            email: comment.user.email,
             profile_picture: comment.user.profile_picture
           },
           reactions_count: comment.reactions.count,

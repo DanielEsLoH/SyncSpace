@@ -66,7 +66,6 @@ export function CommentList({
           // Backend returns { comments: [...] }
           setComments(response.comments || []);
         } catch (error) {
-          console.error('Failed to load comments:', error);
         } finally {
           setIsLoading(false);
         }
@@ -79,15 +78,17 @@ export function CommentList({
   // Set up WebSocket for real-time comment updates
   useEffect(() => {
     const token = tokenStorage.getToken();
-    if (!token) return;
+    if (!token) {
+      return;
+    }
 
     // Connect WebSocket
     wsClient.connect(token);
 
-    // Subscribe to comments channel with callbacks
-    wsClient.subscribeToComments({
+    // Subscribe to comments channel and store listener ID
+    const listenerId = wsClient.subscribeToComments({
       onNewComment: (comment: Comment) => {
-        // Only add if it's for this post and not already present
+        // Check if this is a top-level comment on the post
         if (comment.commentable_id === postId && comment.commentable_type === 'Post') {
           setComments((prev) => {
             if (prev.some(c => c.id === comment.id)) {
@@ -96,6 +97,30 @@ export function CommentList({
             // Prepend new comment to show at the top
             return [comment, ...prev];
           });
+        }
+        // Check if this is a reply to a comment (nested)
+        else if (comment.commentable_type === 'Comment') {
+          setComments((prev) =>
+            prev.map((parentComment) => {
+              // Find the parent comment this is a reply to
+              if (parentComment.id === comment.commentable_id) {
+                const existingReplies = parentComment.replies || [];
+
+                // Check if reply already exists
+                if (existingReplies.some(r => r.id === comment.id)) {
+                  return parentComment;
+                }
+
+                // Add the new reply
+                return {
+                  ...parentComment,
+                  replies: [comment, ...existingReplies],
+                  replies_count: (parentComment.replies_count || 0) + 1
+                };
+              }
+              return parentComment;
+            })
+          );
         }
       },
       onUpdateComment: (comment: Comment) => {
@@ -106,17 +131,34 @@ export function CommentList({
         }
       },
       onDeleteComment: (commentId: number) => {
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        setComments((prev) => {
+          // Try to remove as top-level comment first
+          const withoutComment = prev.filter((c) => c.id !== commentId);
+
+          // If it wasn't a top-level comment, it might be a reply
+          if (withoutComment.length === prev.length) {
+            // No top-level comment was removed, so remove from replies
+            return prev.map((parentComment) => ({
+              ...parentComment,
+              replies: parentComment.replies?.filter(r => r.id !== commentId),
+              replies_count: parentComment.replies?.some(r => r.id === commentId)
+                ? Math.max(0, (parentComment.replies_count || 0) - 1)
+                : parentComment.replies_count
+            }));
+          }
+
+          return withoutComment;
+        });
       },
     });
 
     // Follow this specific post's comments
     wsClient.followPostComments(postId);
 
-    // Cleanup
+    // Cleanup - unsubscribe this specific listener
     return () => {
       wsClient.unfollowPostComments(postId);
-      wsClient.unsubscribe('comments');
+      wsClient.unsubscribeFromComments(listenerId);
     };
   }, [postId]);
 
@@ -198,7 +240,6 @@ export function CommentList({
       // Rollback on error - remove optimistic comment
       setComments((prev) => prev.filter((c) => c.id !== optimisticComment.id));
       setCommentText(previousText);
-      console.error('Failed to add comment:', error);
       toast.error(error.response?.data?.error || 'Failed to add comment');
     } finally {
       setIsSubmitting(false);
@@ -221,9 +262,7 @@ export function CommentList({
       await commentsService.deleteComment(commentId);
       toast.success('Comment deleted!');
     } catch (error: any) {
-      // Rollback on error
       setComments(previousComments);
-      console.error('Failed to delete comment:', error);
       toast.error(error.response?.data?.error || 'Failed to delete comment');
     }
   };
@@ -274,7 +313,6 @@ export function CommentList({
         toast.success(`Reacted with ${reactionType}`);
       }
     } catch (error: any) {
-      console.error('Failed to react to comment:', error);
       toast.error(error.response?.data?.error || 'Failed to react');
     }
   };

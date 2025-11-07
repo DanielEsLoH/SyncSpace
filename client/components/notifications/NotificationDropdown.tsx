@@ -13,22 +13,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { notificationsService } from '@/lib/notifications';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { wsClient } from '@/lib/websocket';
+import { tokenStorage } from '@/lib/auth';
 import { Notification } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { wsClient } from '@/lib/websocket';
-import { tokenStorage } from '@/lib/auth';
 
 /**
  * NotificationDropdown Component
  *
  * Displays a dropdown with recent notifications and unread count badge.
- * Updates in real-time via WebSocket.
+ * Updates in real-time via WebSocket (managed by NotificationsContext).
  */
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const { unreadCount, decrementUnreadCount, resetUnreadCount } = useNotifications();
 
   // Fetch notifications when dropdown opens
   useEffect(() => {
@@ -37,7 +38,7 @@ export function NotificationDropdown() {
     }
   }, [isOpen]);
 
-  // Set up WebSocket for real-time notifications
+  // Set up WebSocket for real-time notification updates in dropdown
   useEffect(() => {
     const token = tokenStorage.getToken();
     if (!token) return;
@@ -45,34 +46,37 @@ export function NotificationDropdown() {
     // Connect WebSocket
     wsClient.connect(token);
 
-    // Subscribe to notifications channel
-    wsClient.subscribeToNotifications({
+    // Subscribe to notifications channel and store listener ID
+    const listenerId = wsClient.subscribeToNotifications({
       onNewNotification: (notification: Notification) => {
-        setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
-        setUnreadCount((prev) => prev + 1);
+        // Add new notification and keep only the 5 most recent
+        setNotifications((prev) => {
+          // Check for duplicates
+          if (prev.some(n => n.id === notification.id)) {
+            return prev;
+          }
+          return [notification, ...prev].slice(0, 5);
+        });
       },
       onNotificationRead: (notificationId: number) => {
+        // Update notification read status
         setNotifications((prev) =>
           prev.map((n) =>
             n.id === notificationId ? { ...n, read: true } : n
           )
         );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
       },
       onAllNotificationsRead: () => {
+        // Mark all notifications as read
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, read: true }))
         );
-        setUnreadCount(0);
       },
     });
 
-    // Fetch initial unread count
-    fetchUnreadCount();
-
-    // Cleanup on unmount
+    // Cleanup on unmount - unsubscribe this specific listener
     return () => {
-      wsClient.unsubscribe('notifications');
+      wsClient.unsubscribeFromNotifications(listenerId);
     };
   }, []);
 
@@ -83,18 +87,7 @@ export function NotificationDropdown() {
         per_page: 5,
       });
       setNotifications(response.notifications);
-      setUnreadCount(response.unread_count);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
-  };
-
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await notificationsService.getUnreadCount();
-      setUnreadCount(response.count);
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error);
     }
   };
 
@@ -104,12 +97,12 @@ export function NotificationDropdown() {
 
     try {
       await notificationsService.markAsRead(notificationId);
+      // Update local notifications list to show as read
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      // Context will update the count via WebSocket
     } catch (error) {
-      console.error('Failed to mark as read:', error);
       toast.error('Failed to mark notification as read');
     }
   };
@@ -117,11 +110,11 @@ export function NotificationDropdown() {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationsService.markAllAsRead();
+      // Update local notifications list to show all as read
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      // Context will update the count via WebSocket
       toast.success('All notifications marked as read');
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
       toast.error('Failed to mark all as read');
     }
   };

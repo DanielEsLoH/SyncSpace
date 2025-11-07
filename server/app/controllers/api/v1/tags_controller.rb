@@ -8,8 +8,8 @@ module Api
         tags = Tag.includes(:posts).all
 
         # Sort by popularity (most used) or alphabetically
-        tags = if params[:sort] == 'popular'
-          tags.left_joins(:posts).group('tags.id').order('COUNT(posts.id) DESC')
+        tags = if params[:sort] == "popular"
+          tags.left_joins(:posts).group("tags.id").order("COUNT(posts.id) DESC")
         else
           tags.order(:name)
         end
@@ -24,7 +24,7 @@ module Api
         tag = Tag.find(params[:id])
         render json: { tag: tag_response(tag) }, status: :ok
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Tag not found' }, status: :not_found
+        render json: { error: "Tag not found" }, status: :not_found
       end
 
       # GET /api/v1/tags/:id/posts
@@ -32,7 +32,7 @@ module Api
         tag = Tag.includes(posts: :user).find(params[:id])
 
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 10, 50].min
+        per_page = [ params[:per_page]&.to_i || 10, 50 ].min
 
         posts = tag.posts.order(created_at: :desc)
 
@@ -50,7 +50,7 @@ module Api
           }
         }, status: :ok
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Tag not found' }, status: :not_found
+        render json: { error: "Tag not found" }, status: :not_found
       end
 
       private
@@ -68,7 +68,7 @@ module Api
         {
           id: post.id,
           title: post.title,
-          description: post.description[0..150] + '...',
+          description: post.description[0..150] + "...",
           user: {
             id: post.user.id,
             name: post.user.name

@@ -1,7 +1,7 @@
 module Api
   module V1
     class SearchController < ApplicationController
-      skip_before_action :authenticate_request, only: [:index]
+      skip_before_action :authenticate_request, only: [ :index ]
 
       # GET /api/v1/search
       # Params:
@@ -10,18 +10,18 @@ module Api
       #   user: search by username or @username or @email
       #   tag: search by tag name
       def index
-        posts = Post.includes(:user, :tags).distinct
+        posts = Post.includes(:user, :tags, :reactions, :comments).distinct
 
         # Search by title
         if params[:title].present?
-          posts = posts.where('posts.title ILIKE ?', "%#{params[:title]}%")
+          posts = posts.where("posts.title ILIKE ?", "%#{params[:title]}%")
         end
 
         # Search by user (@username or @email)
         if params[:user].present?
-          user_query = params[:user].gsub('@', '')
+          user_query = params[:user].gsub("@", "")
           posts = posts.joins(:user).where(
-            'users.name ILIKE ? OR users.email ILIKE ?',
+            "users.name ILIKE ? OR users.email ILIKE ?",
             "%#{user_query}%",
             "%#{user_query}%"
           )
@@ -29,13 +29,13 @@ module Api
 
         # Search by tag
         if params[:tag].present?
-          posts = posts.joins(:tags).where('tags.name ILIKE ?', "%#{params[:tag]}%")
+          posts = posts.joins(:tags).where("tags.name ILIKE ?", "%#{params[:tag]}%")
         end
 
         # General search across multiple fields
         if params[:q].present?
           posts = posts.left_joins(:user, :tags).where(
-            'posts.title ILIKE ? OR posts.description ILIKE ? OR users.name ILIKE ? OR tags.name ILIKE ?',
+            "posts.title ILIKE ? OR posts.description ILIKE ? OR users.name ILIKE ? OR tags.name ILIKE ?",
             "%#{params[:q]}%",
             "%#{params[:q]}%",
             "%#{params[:q]}%",
@@ -45,7 +45,7 @@ module Api
 
         # Pagination
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 10, 50].min
+        per_page = [ params[:per_page]&.to_i || 10, 50 ].min
 
         total_count = posts.count
         posts = posts.order(created_at: :desc).offset((page - 1) * per_page).limit(per_page)
@@ -67,7 +67,7 @@ module Api
         {
           id: post.id,
           title: post.title,
-          description: post.description[0..200] + '...', # Excerpt for search results
+          description: post.description.length > 200 ? post.description[0..200] + "..." : post.description,
           picture: post.picture,
           user: {
             id: post.user.id,
@@ -75,7 +75,10 @@ module Api
             profile_picture: post.user.profile_picture
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-          created_at: post.created_at
+          reactions_count: post.reactions.size,
+          comments_count: post.comments.size,
+          created_at: post.created_at,
+          updated_at: post.updated_at
         }
       end
     end

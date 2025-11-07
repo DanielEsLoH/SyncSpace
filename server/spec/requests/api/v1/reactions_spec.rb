@@ -352,7 +352,7 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
            headers: auth_headers(user)
 
       expect(user.reactions.count).to eq(2)
-      expect(user.reactions.pluck(:reaction_type)).to match_array(['like', 'love'])
+      expect(user.reactions.pluck(:reaction_type)).to match_array([ 'like', 'love' ])
     end
   end
 

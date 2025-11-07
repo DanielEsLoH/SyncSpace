@@ -8,6 +8,7 @@ import { NotificationsSkeleton } from './NotificationsSkeleton';
 import { Button } from '@/components/ui/button';
 import { Bell, Check } from 'lucide-react';
 import { notificationsService } from '@/lib/notifications';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { wsClient } from '@/lib/websocket';
 import { tokenStorage } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -54,7 +55,6 @@ interface GroupedNotifications {
 export function NotificationsList({ initialData, userId }: NotificationsListProps) {
   // State
   const [notifications, setNotifications] = useState<Notification[]>(initialData.notifications);
-  const [unreadCount, setUnreadCount] = useState(initialData.unread_count);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(
     initialData.meta.current_page < initialData.meta.total_pages
@@ -63,40 +63,51 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
   const [isLoadingMore, startLoadingMore] = useTransition();
   const [optimisticReadIds, setOptimisticReadIds] = useState<Set<number>>(new Set());
 
-  // Set up WebSocket for real-time notifications
+  // Use shared notifications context
+  const { unreadCount } = useNotifications();
+
+  // Set up WebSocket for real-time notification list updates
   useEffect(() => {
     const token = tokenStorage.getToken();
-    if (!token) return;
+    if (!token) {
+      return;
+    }
 
     // Connect WebSocket
     wsClient.connect(token);
 
-    // Subscribe to notifications channel
-    wsClient.subscribeToNotifications({
+    // Subscribe to notifications channel and store listener ID
+    const listenerId = wsClient.subscribeToNotifications({
       onNewNotification: (notification: Notification) => {
-        setNotifications((prev) => [notification, ...prev]);
-        setUnreadCount((prev) => prev + 1);
+        // Add new notification to the top of the list
+        setNotifications((prev) => {
+          // Check for duplicates
+          if (prev.some(n => n.id === notification.id)) {
+            return prev;
+          }
+          return [notification, ...prev];
+        });
         toast.info('New notification received');
       },
       onNotificationRead: (notificationId: number) => {
+        // Update notification read status in the list
         setNotifications((prev) =>
           prev.map((n) =>
             n.id === notificationId ? { ...n, read: true } : n
           )
         );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
       },
       onAllNotificationsRead: () => {
+        // Mark all notifications as read in the list
         setNotifications((prev) =>
           prev.map((n) => ({ ...n, read: true }))
         );
-        setUnreadCount(0);
       },
     });
 
-    // Cleanup on unmount
+    // Cleanup on unmount - unsubscribe this specific listener
     return () => {
-      wsClient.unsubscribe('notifications');
+      wsClient.unsubscribeFromNotifications(listenerId);
     };
   }, []);
 
@@ -155,7 +166,6 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
     setNotifications((prev) =>
       prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
 
     try {
       await notificationsService.markAsRead(notificationId);
@@ -165,9 +175,8 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
         next.delete(notificationId);
         return next;
       });
+      // Context will update unreadCount via WebSocket
     } catch (err: any) {
-      console.error('Failed to mark notification as read:', err);
-      // Rollback on error
       setOptimisticReadIds((prev) => {
         const next = new Set(prev);
         next.delete(notificationId);
@@ -176,7 +185,6 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: false } : n))
       );
-      setUnreadCount((prev) => prev + 1);
       toast.error('Failed to mark notification as read');
     }
   }, []);
@@ -184,24 +192,20 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
   // Mark all notifications as read
   const handleMarkAllAsRead = useCallback(async () => {
     const previousNotifications = [...notifications];
-    const previousUnreadCount = unreadCount;
 
     // Optimistic update
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setUnreadCount(0);
     setOptimisticReadIds(new Set());
 
     try {
       await notificationsService.markAllAsRead();
       toast.success('All notifications marked as read');
+      // Context will update unreadCount via WebSocket
     } catch (err: any) {
-      console.error('Failed to mark all as read:', err);
-      // Rollback on error
       setNotifications(previousNotifications);
-      setUnreadCount(previousUnreadCount);
       toast.error('Failed to mark all as read');
     }
-  }, [notifications, unreadCount]);
+  }, [notifications]);
 
   // Load more notifications
   const handleLoadMore = useCallback(() => {
@@ -217,7 +221,6 @@ export function NotificationsList({ initialData, userId }: NotificationsListProp
         setCurrentPage(nextPage);
         setHasMore(response.meta.current_page < response.meta.total_pages);
       } catch (err: any) {
-        console.error('Failed to load more notifications:', err);
         toast.error('Failed to load more notifications');
       }
     });

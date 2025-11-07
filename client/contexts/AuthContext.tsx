@@ -91,7 +91,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(currentUser);
       tokenStorage.setUser(currentUser);
     } catch (error) {
-      console.error('Failed to refresh user:', error);
     }
   };
 

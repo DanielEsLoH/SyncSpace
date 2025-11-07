@@ -65,7 +65,6 @@ export default function SettingsPage() {
       await refreshUser();
       toast.success('Profile updated successfully!');
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
       toast.error(error.response?.data?.error || 'Failed to update profile');
     } finally {
       setIsLoading(false);

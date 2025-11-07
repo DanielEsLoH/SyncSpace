@@ -114,7 +114,7 @@ RSpec.describe Post, type: :model do
       it 'returns all posts with users' do
         posts = Post.with_user
         expect(posts.count).to eq(3)
-        expect(posts.map(&:user).uniq).to eq([user])
+        expect(posts.map(&:user).uniq).to eq([ user ])
       end
     end
 
@@ -133,14 +133,14 @@ RSpec.describe Post, type: :model do
       end
 
       it 'includes comment counts' do
-        posts = Post.with_counts.index_by(&:id)
+        posts = Post.all.index_by(&:id)
         expect(posts[older_post.id].comments_count.to_i).to eq(3)
         expect(posts[newer_post.id].comments_count.to_i).to eq(1)
         expect(posts[newest_post.id].comments_count.to_i).to eq(0)
       end
 
       it 'includes reaction counts' do
-        posts = Post.with_counts.index_by(&:id)
+        posts = Post.all.index_by(&:id)
         expect(posts[older_post.id].reactions_count.to_i).to eq(2)
         expect(posts[newer_post.id].reactions_count.to_i).to eq(0)
       end
@@ -322,7 +322,7 @@ RSpec.describe Post, type: :model do
         tag2 = create(:tag, name: 'rails')
         tag3 = create(:tag, name: 'rspec')
 
-        post.tags << [tag1, tag2, tag3]
+        post.tags << [ tag1, tag2, tag3 ]
         expect(post.tags.count).to eq(3)
         expect(post.tags).to include(tag1, tag2, tag3)
       end
@@ -348,7 +348,7 @@ RSpec.describe Post, type: :model do
       # Add tags
       tag1 = create(:tag, name: 'ruby')
       tag2 = create(:tag, name: 'rails')
-      post.tags << [tag1, tag2]
+      post.tags << [ tag1, tag2 ]
 
       # Add comments
       3.times do |i|

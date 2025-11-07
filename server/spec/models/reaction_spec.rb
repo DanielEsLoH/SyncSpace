@@ -62,7 +62,7 @@ RSpec.describe Reaction, type: :model do
       end
 
       it 'rejects invalid reaction types' do
-        invalid_types = ['invalid', 'happy', 'sad', '']
+        invalid_types = [ 'invalid', 'happy', 'sad', '' ]
         invalid_types.each do |type|
           reaction = build(:reaction, user: user, reactionable: post, reaction_type: type)
           expect(reaction).not_to be_valid
@@ -72,17 +72,18 @@ RSpec.describe Reaction, type: :model do
     end
 
     context 'uniqueness validation' do
-      it 'validates uniqueness of user_id scoped to reactionable and reaction_type' do
+      it 'validates uniqueness of user_id scoped to reactionable (prevents multiple reactions)' do
         create(:reaction, user: user, reactionable: post, reaction_type: 'like')
         duplicate_reaction = build(:reaction, user: user, reactionable: post, reaction_type: 'like')
         expect(duplicate_reaction).not_to be_valid
-        expect(duplicate_reaction.errors[:user_id]).to include('has already reacted with this type')
+        expect(duplicate_reaction.errors[:user_id]).to include('has already reacted to this')
       end
 
-      it 'allows same user to react with different types on same reactionable' do
+      it 'prevents same user from having multiple reaction types on same reactionable' do
         create(:reaction, user: user, reactionable: post, reaction_type: 'like')
         different_reaction = build(:reaction, user: user, reactionable: post, reaction_type: 'love')
-        expect(different_reaction).to be_valid
+        expect(different_reaction).not_to be_valid
+        expect(different_reaction.errors[:user_id]).to include('has already reacted to this')
       end
 
       it 'allows same user to react with same type on different reactionables' do
@@ -208,19 +209,24 @@ RSpec.describe Reaction, type: :model do
     end
 
     context 'toggling different reaction types' do
-      it 'allows adding different reaction types from same user' do
+      it 'changes reaction type when user clicks different reaction' do
         Reaction.toggle(user: user, reactionable: post, reaction_type: 'like')
         result = Reaction.toggle(user: user, reactionable: post, reaction_type: 'love')
-        expect(result[:action]).to eq('added')
-        expect(Reaction.count).to eq(2)
+        expect(result[:action]).to eq('changed')
+        expect(result[:reaction].reaction_type).to eq('love')
+        expect(Reaction.count).to eq(1)  # Only 1 reaction, not 2
       end
 
-      it 'does not affect other reaction types when toggling' do
-        create(:reaction, user: user, reactionable: post, reaction_type: 'like')
-        love_reaction = create(:reaction, user: user, reactionable: post, reaction_type: 'love')
+      it 'replaces old reaction when toggling to different type' do
+        reaction = Reaction.toggle(user: user, reactionable: post, reaction_type: 'like')[:reaction]
+        original_id = reaction.id
 
-        Reaction.toggle(user: user, reactionable: post, reaction_type: 'like')
-        expect(Reaction.exists?(love_reaction.id)).to be true
+        result = Reaction.toggle(user: user, reactionable: post, reaction_type: 'love')
+
+        # Same reaction record, just updated type
+        expect(result[:reaction].id).to eq(original_id)
+        expect(result[:reaction].reaction_type).to eq('love')
+        expect(Reaction.where(user: user, reactionable: post).count).to eq(1)
       end
     end
 
@@ -325,19 +331,21 @@ RSpec.describe Reaction, type: :model do
 
     it 'handles user changing reaction type' do
       # Add like
-      Reaction.toggle(user: user1, reactionable: post, reaction_type: 'like')
+      result1 = Reaction.toggle(user: user1, reactionable: post, reaction_type: 'like')
+      expect(result1[:action]).to eq('added')
       expect(Reaction.likes.count).to eq(1)
 
-      # Add love (different type, should coexist)
-      Reaction.toggle(user: user1, reactionable: post, reaction_type: 'love')
-      expect(post.reactions.count).to eq(2)
-      expect(Reaction.likes.count).to eq(1)
+      # Change to love (replaces like, doesn't coexist)
+      result2 = Reaction.toggle(user: user1, reactionable: post, reaction_type: 'love')
+      expect(result2[:action]).to eq('changed')
+      expect(post.reactions.count).to eq(1)  # Only 1 reaction total
+      expect(Reaction.likes.count).to eq(0)  # Like was replaced
       expect(Reaction.loves.count).to eq(1)
 
-      # Remove like
-      Reaction.toggle(user: user1, reactionable: post, reaction_type: 'like')
-      expect(post.reactions.count).to eq(1)
-      expect(Reaction.loves.count).to eq(1)
+      # Remove love
+      result3 = Reaction.toggle(user: user1, reactionable: post, reaction_type: 'love')
+      expect(result3[:action]).to eq('removed')
+      expect(post.reactions.count).to eq(0)
     end
 
     it 'handles reactions across posts and comments' do

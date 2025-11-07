@@ -58,7 +58,6 @@ export function CreatePostDialog({
       );
       setAvailableTags(filteredTags);
     } catch (error) {
-      console.error("Failed to search tags:", error);
     } finally {
       setIsLoadingTags(false);
     }
@@ -126,8 +125,18 @@ export function CreatePostDialog({
       return;
     }
 
+    if (title.trim().length < 3) {
+      toast.error("Title must be at least 3 characters long");
+      return;
+    }
+
     if (!description.trim()) {
       toast.error("Please enter a description");
+      return;
+    }
+
+    if (description.trim().length < 10) {
+      toast.error("Description must be at least 10 characters long");
       return;
     }
 
@@ -138,7 +147,7 @@ export function CreatePostDialog({
         title: title.trim(),
         description: description.trim(),
         picture: imageFile || undefined,
-        tag_ids: selectedTags.map((tag) => tag.id),
+        tags: selectedTags.map((tag) => tag.name),
       });
 
       toast.success("Post created successfully!");
@@ -146,7 +155,6 @@ export function CreatePostDialog({
       resetForm();
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Failed to create post:", error);
       const errorMessage =
         error.response?.data?.error || "Failed to create post";
       toast.error(errorMessage);
@@ -193,10 +201,10 @@ export function CreatePostDialog({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">Description * (min 10 characters)</Label>
             <Textarea
               id="description"
-              placeholder="What's on your mind?"
+              placeholder="What's on your mind? (minimum 10 characters)"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isSubmitting}
@@ -204,7 +212,7 @@ export function CreatePostDialog({
               maxLength={2000}
             />
             <p className="text-xs text-muted-foreground">
-              {description.length}/2000
+              {description.length}/2000 (minimum 10 characters)
             </p>
           </div>
 

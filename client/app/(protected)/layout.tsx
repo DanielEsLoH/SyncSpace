@@ -4,18 +4,18 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DialogProvider, useDialogContext } from '@/contexts/DialogContext';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import { FeedStateProvider } from '@/contexts/FeedStateContext';
 import { Navigation } from '@/components/layout/Navigation';
+import { globalWebSocket } from '@/lib/globalWebSocket';
 
-/**
- * Protected Layout Content - Inner component that uses DialogContext
- */
 function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   const { openCreatePostDialog } = useDialogContext();
 
   return (
     <>
       {/* Navigation - Rendered once for all protected routes */}
-      <Navigation onCreatePost={openCreatePostDialog} notificationCount={0} />
+      <Navigation onCreatePost={openCreatePostDialog} />
 
       {/* Page Content */}
       {children}
@@ -23,27 +23,6 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Protected Layout - Wraps all authenticated pages
- *
- * This layout provides:
- * - Consistent Navigation component across all protected routes
- * - Authentication guard (redirects to login if not authenticated)
- * - Loading state while checking authentication
- * - Global dialog management (Create Post, etc.)
- *
- * Route Structure:
- * - /app/(protected)/* - All pages requiring authentication
- * - /app/(auth)/* - Authentication pages (login, register, etc.)
- *
- * Benefits over per-page Navigation:
- * - Single source of truth for navigation rendering
- * - Consistent behavior across all protected routes
- * - No code duplication
- * - Proper loading states during auth checks
- * - Better UX with persistent navigation during page transitions
- * - Global dialog state management
- */
 export default function ProtectedLayout({
   children,
 }: {
@@ -58,6 +37,20 @@ export default function ProtectedLayout({
       router.push('/login');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  // Initialize global WebSocket when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      globalWebSocket.initialize();
+    }
+
+    return () => {
+      // Cleanup on unmount (e.g., logout)
+      if (!isAuthenticated) {
+        globalWebSocket.cleanup();
+      }
+    };
+  }, [isAuthenticated]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -77,8 +70,12 @@ export default function ProtectedLayout({
   }
 
   return (
-    <DialogProvider>
-      <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
-    </DialogProvider>
+    <NotificationsProvider>
+      <DialogProvider>
+        <FeedStateProvider>
+          <ProtectedLayoutContent>{children}</ProtectedLayoutContent>
+        </FeedStateProvider>
+      </DialogProvider>
+    </NotificationsProvider>
   );
 }

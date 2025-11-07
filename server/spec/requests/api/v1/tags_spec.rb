@@ -88,7 +88,7 @@ RSpec.describe 'Api::V1::Tags', type: :request do
 
         expect(response).to have_http_status(:ok)
         tag_names = json_response[:tags].map { |t| t[:name] }
-        expect(tag_names).to eq(['javascript', 'python', 'rails', 'ruby'])
+        expect(tag_names).to eq([ 'javascript', 'python', 'rails', 'ruby' ])
       end
 
       it 'returns tags ordered by name when sort=alphabetical' do
@@ -412,7 +412,7 @@ RSpec.describe 'Api::V1::Tags', type: :request do
       rails_tag = create(:tag, name: 'rails', color: '#cc0000')
 
       post = create(:post, user: user, title: 'Rails Post', description: 'Description for rails post')
-      post.tags << [ruby_tag, rails_tag]
+      post.tags << [ ruby_tag, rails_tag ]
 
       get "/api/v1/tags/#{ruby_tag.id}/posts"
 

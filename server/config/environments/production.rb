@@ -73,9 +73,9 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :brevo
   config.action_mailer.perform_deliveries = true
   config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.default_url_options = { host: ENV.fetch('CLIENT_URL', 'https://yourdomain.com') }
+  config.action_mailer.default_url_options = { host: ENV.fetch("CLIENT_URL", "https://yourdomain.com") }
 
   # ActionCable configuration
-  config.action_cable.url = ENV.fetch('ACTION_CABLE_URL', 'wss://yourdomain.com/cable')
-  config.action_cable.allowed_request_origins = [ ENV.fetch('CLIENT_URL', 'https://yourdomain.com') ]
+  config.action_cable.url = ENV.fetch("ACTION_CABLE_URL", "wss://yourdomain.com/cable")
+  config.action_cable.allowed_request_origins = [ ENV.fetch("CLIENT_URL", "https://yourdomain.com") ]
 end

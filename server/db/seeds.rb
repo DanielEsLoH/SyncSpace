@@ -107,7 +107,7 @@ reactions_count = 0
 posts.each do |post|
   rand(1..4).times do
     user = users.sample
-    reaction_type = ['like', 'love', 'dislike'].sample
+    reaction_type = [ 'like', 'love', 'dislike' ].sample
 
     # Avoid duplicate reactions
     unless Reaction.exists?(user: user, reactionable: post, reaction_type: reaction_type)
@@ -126,7 +126,7 @@ comments.each do |comment|
   if rand < 0.6 # 60% of comments get reactions
     rand(1..3).times do
       user = users.sample
-      reaction_type = ['like', 'love'].sample # Comments mostly get positive reactions
+      reaction_type = [ 'like', 'love' ].sample # Comments mostly get positive reactions
 
       unless Reaction.exists?(user: user, reactionable: comment, reaction_type: reaction_type)
         Reaction.create!(

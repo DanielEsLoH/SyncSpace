@@ -7,19 +7,21 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 require 'rspec/rails'
 
 # Add SimpleCov for code coverage
-require 'simplecov'
-SimpleCov.start 'rails' do
-  add_filter '/bin/'
-  add_filter '/db/'
-  add_filter '/spec/'
-  add_filter '/config/'
-  add_filter '/vendor/'
+unless ENV['DISABLE_SIMPLECOV'] == 'true' || ENV['COVERAGE'] == 'false'
+  require 'simplecov'
+  SimpleCov.start 'rails' do
+    add_filter '/bin/'
+    add_filter '/db/'
+    add_filter '/spec/'
+    add_filter '/config/'
+    add_filter '/vendor/'
 
-  add_group 'Models', 'app/models'
-  add_group 'Controllers', 'app/controllers'
-  add_group 'Mailers', 'app/mailers'
-  add_group 'Services', 'app/services'
-  add_group 'Lib', 'lib'
+    add_group 'Models', 'app/models'
+    add_group 'Controllers', 'app/controllers'
+    add_group 'Mailers', 'app/mailers'
+    add_group 'Services', 'app/services'
+    add_group 'Lib', 'lib'
+  end
 end
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
@@ -35,7 +37,7 @@ end
 
 RSpec.configure do |config|
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
-  config.fixture_paths = [Rails.root.join('spec/fixtures')]
+  config.fixture_paths = [ Rails.root.join('spec/fixtures') ]
 
   # Use transactional fixtures
   config.use_transactional_fixtures = true

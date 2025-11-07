@@ -46,7 +46,17 @@ export function DialogProvider({ children }: DialogProviderProps) {
 
   const handlePostCreated = (post: Post) => {
     setIsCreatePostOpen(false);
-    // Post will appear via WebSocket real-time updates
+
+    // Broadcast custom event for optimistic updates across all pages
+    // Mark source as 'navigation' so all pages process it
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('post-created-optimistic', {
+        detail: { post, source: 'navigation' }
+      });
+      window.dispatchEvent(event);
+    }
+
+    // Post will also appear via WebSocket for other users
   };
 
   return (

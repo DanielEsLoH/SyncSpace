@@ -3,8 +3,8 @@ require 'ostruct'
 
 # Create a test controller to test ApplicationController methods
 class TestController < ApplicationController
-  skip_before_action :authenticate_request, only: [:public_action, :optional_auth_action]
-  before_action :authenticate_optional, only: [:optional_auth_action]
+  skip_before_action :authenticate_request, only: [ :public_action, :optional_auth_action ]
+  before_action :authenticate_optional, only: [ :optional_auth_action ]
 
   def public_action
     render json: { message: 'public' }

@@ -106,7 +106,6 @@ export function ProfileSettingsForm({ user, onUpdate }: ProfileSettingsFormProps
       setHasUnsavedChanges(false);
       toast.success('Profile updated successfully!');
     } catch (error: any) {
-      console.error('Failed to update profile:', error);
       toast.error(
         error.response?.data?.error ||
         error.response?.data?.message ||

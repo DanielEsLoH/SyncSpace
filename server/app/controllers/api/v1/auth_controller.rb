@@ -1,7 +1,7 @@
 module Api
   module V1
     class AuthController < ApplicationController
-      skip_before_action :authenticate_request, only: [:register, :login, :confirm_email, :forgot_password, :reset_password, :refresh]
+      skip_before_action :authenticate_request, only: [ :register, :login, :confirm_email, :forgot_password, :reset_password, :refresh ]
 
       # POST /api/v1/auth/register
       def register
@@ -10,7 +10,7 @@ module Api
         if user.save
           UserMailer.confirmation_email(user).deliver_later
           render json: {
-            message: 'Registration successful. Please check your email to confirm your account.',
+            message: "Registration successful. Please check your email to confirm your account.",
             user: user_response(user)
           }, status: :created
         else
@@ -24,7 +24,7 @@ module Api
 
         if user&.authenticate(params[:password])
           unless user.confirmed?
-            return render json: { error: 'Please confirm your email address first' }, status: :unauthorized
+            return render json: { error: "Please confirm your email address first" }, status: :unauthorized
           end
 
           # Generate both access and refresh tokens
@@ -37,7 +37,7 @@ module Api
             user: user_response(user)
           }, status: :ok
         else
-          render json: { error: 'Invalid email or password' }, status: :unauthorized
+          render json: { error: "Invalid email or password" }, status: :unauthorized
         end
       end
 
@@ -47,23 +47,23 @@ module Api
 
         if user
           if user.confirmed?
-            render json: { message: 'Email already confirmed' }, status: :ok
+            render json: { message: "Email already confirmed" }, status: :ok
           elsif user.confirm!
             # Generate both access and refresh tokens
             access_token = JsonWebToken.encode(user_id: user.id)
             refresh_token = user.generate_refresh_token!
 
             render json: {
-              message: 'Email confirmed successfully',
+              message: "Email confirmed successfully",
               token: access_token,
               refresh_token: refresh_token,
               user: user_response(user)
             }, status: :ok
           else
-            render json: { error: 'Failed to confirm email' }, status: :unprocessable_entity
+            render json: { error: "Failed to confirm email" }, status: :unprocessable_entity
           end
         else
-          render json: { error: 'Invalid confirmation token' }, status: :not_found
+          render json: { error: "Invalid confirmation token" }, status: :not_found
         end
       end
 
@@ -74,10 +74,10 @@ module Api
         if user
           user.generate_reset_password_token
           UserMailer.password_reset_email(user).deliver_later
-          render json: { message: 'Password reset instructions sent to your email' }, status: :ok
+          render json: { message: "Password reset instructions sent to your email" }, status: :ok
         else
           # Don't reveal if email exists or not (security best practice)
-          render json: { message: 'If that email exists, password reset instructions have been sent' }, status: :ok
+          render json: { message: "If that email exists, password reset instructions have been sent" }, status: :ok
         end
       end
 
@@ -85,7 +85,7 @@ module Api
       def reset_password
         user = User.find_by(reset_password_token: params[:token])
 
-        if user && user.reset_password_token_valid?
+        if user&.reset_password_token_valid?
           if user.update(password: params[:password], password_confirmation: params[:password_confirmation])
             user.update(reset_password_token: nil, reset_password_sent_at: nil)
 
@@ -94,7 +94,7 @@ module Api
             refresh_token = user.generate_refresh_token!
 
             render json: {
-              message: 'Password reset successfully',
+              message: "Password reset successfully",
               token: access_token,
               refresh_token: refresh_token,
               user: user_response(user)
@@ -103,7 +103,7 @@ module Api
             render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
           end
         else
-          render json: { error: 'Invalid or expired reset token' }, status: :unprocessable_entity
+          render json: { error: "Invalid or expired reset token" }, status: :unprocessable_entity
         end
       end
 
@@ -126,21 +126,21 @@ module Api
         refresh_token = params[:refresh_token]
 
         unless refresh_token.present?
-          return render json: { error: 'Refresh token is required' }, status: :bad_request
+          return render json: { error: "Refresh token is required" }, status: :bad_request
         end
 
         # Decode and validate the refresh token
         decoded = JsonWebToken.decode_refresh_token(refresh_token)
 
         unless decoded
-          return render json: { error: 'Invalid refresh token' }, status: :unauthorized
+          return render json: { error: "Invalid refresh token" }, status: :unauthorized
         end
 
         # Find the user and verify the stored refresh token matches
         user = User.find_by(id: decoded[:user_id])
 
         unless user && user.refresh_token == refresh_token && user.refresh_token_valid?
-          return render json: { error: 'Refresh token expired or invalid' }, status: :unauthorized
+          return render json: { error: "Refresh token expired or invalid" }, status: :unauthorized
         end
 
         # Generate new tokens (rotating refresh token)
@@ -150,11 +150,11 @@ module Api
         render json: {
           token: new_access_token,
           refresh_token: new_refresh_token,
-          message: 'Tokens refreshed successfully'
+          message: "Tokens refreshed successfully"
         }, status: :ok
       rescue => e
         Rails.logger.error("Refresh token error: #{e.message}")
-        render json: { error: 'Failed to refresh token' }, status: :internal_server_error
+        render json: { error: "Failed to refresh token" }, status: :internal_server_error
       end
 
       private

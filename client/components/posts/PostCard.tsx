@@ -79,7 +79,6 @@ export function PostCard({
     try {
       await onDelete?.(post.id);
     } catch (error) {
-      console.error("Failed to delete post:", error);
       setIsDeleting(false);
     }
   };
@@ -291,6 +290,8 @@ export function PostCard({
           initialReactionsCount={post.reactions_count || 0}
           initialUserReaction={post.user_reaction}
           isAuthenticated={!!user}
+          // No callback needed - FeedStateContext handles feed updates,
+          // WebSocket handlers manage updates for profile/detail pages
         />
 
         {/* Comments Count */}

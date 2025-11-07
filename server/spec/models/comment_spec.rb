@@ -124,7 +124,7 @@ RSpec.describe Comment, type: :model do
       it 'returns all comments with users' do
         comments = Comment.with_user
         expect(comments.count).to eq(3)
-        expect(comments.map(&:user).uniq).to eq([user])
+        expect(comments.map(&:user).uniq).to eq([ user ])
       end
     end
   end
@@ -342,7 +342,7 @@ RSpec.describe Comment, type: :model do
       end
 
       expect(comment.reactions_count).to eq(3)
-      expect(comment.reactions.map(&:reaction_type).uniq).to eq(['like'])
+      expect(comment.reactions.map(&:reaction_type).uniq).to eq([ 'like' ])
     end
 
     it 'maintains data integrity across different query methods' do

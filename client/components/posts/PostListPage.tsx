@@ -68,7 +68,6 @@ export function PostListPage({ searchQuery, tagId, title }: PostListPageProps) {
         }
         setError(null);
       } catch (err: any) {
-        console.error("Failed to fetch posts:", err);
         setError(err.response?.data?.error || "Failed to load posts");
         toast.error("Failed to load posts");
       } finally {

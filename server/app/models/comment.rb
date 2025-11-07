@@ -28,12 +28,12 @@ class Comment < ApplicationRecord
 
   # Check if this is a top-level comment (belongs to a post)
   def top_level?
-    commentable_type == 'Post'
+    commentable_type == "Post"
   end
 
   # Check if this is a reply to another comment
   def reply?
-    commentable_type == 'Comment'
+    commentable_type == "Comment"
   end
 
   # Get the root post (works for nested comments)
@@ -48,7 +48,7 @@ class Comment < ApplicationRecord
   private
 
   def cannot_be_self_parent
-    if commentable_type == 'Comment' && commentable_id == id
+    if commentable_type == "Comment" && commentable_id == id
       errors.add(:commentable, "cannot be itself")
     end
   end

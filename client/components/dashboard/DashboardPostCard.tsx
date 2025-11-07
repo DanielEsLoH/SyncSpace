@@ -63,7 +63,6 @@ export function DashboardPostCard({
     try {
       await onDelete?.(post.id);
     } catch (error) {
-      console.error('Failed to delete post:', error);
       setIsDeleting(false);
     }
   };

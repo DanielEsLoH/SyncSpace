@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { Post } from '@/types';
 import { PostContent } from './PostContent';
 import { PostReactions } from './PostReactions';
-import { wsClient } from '@/lib/websocket';
-import { tokenStorage } from '@/lib/auth';
 
 interface PostDetailClientProps {
   initialPost: Post;
@@ -32,39 +30,63 @@ export function PostDetailClient({
 }: PostDetailClientProps) {
   const [post, setPost] = useState<Post>(initialPost);
 
-  // Set up WebSocket for real-time post updates
+  // Listen to global WebSocket events for real-time post updates
   useEffect(() => {
-    const token = tokenStorage.getToken();
-    if (!token) return;
+    const handleUpdatePost = (event: CustomEvent) => {
+      const { post: updatedPost } = event.detail;
+      // Update if this is the current post
+      if (updatedPost.id === post.id) {
+        setPost((currentPost) => ({
+          ...updatedPost,
+          // Preserve user_reaction since WebSocket updates don't include it
+          user_reaction: updatedPost.user_reaction !== undefined ? updatedPost.user_reaction : currentPost.user_reaction
+        }));
+      }
+    };
 
-    // Connect WebSocket
-    wsClient.connect(token);
+    const handleDeletePost = (event: CustomEvent) => {
+      const { postId } = event.detail;
+      // Redirect to feed if this post is deleted
+      if (postId === post.id) {
+        window.location.href = '/feed';
+      }
+    };
 
-    // Subscribe to posts channel for real-time updates and store listener ID
-    const listenerId = wsClient.subscribeToPosts({
-      onUpdatePost: (updatedPost: Post) => {
-        // Update if this is the current post
-        if (updatedPost.id === post.id) {
-          setPost(updatedPost);
-        }
-      },
-      onDeletePost: (postId: number) => {
-        // Redirect to feed if this post is deleted
-        if (postId === post.id) {
-          window.location.href = '/feed';
-        }
-      },
-      onReactionUpdate: (data: { post: Post; reaction_action: string }) => {
-        // Update full post data (including user_reaction) in real-time
-        if (data.post && data.post.id === post.id) {
-          setPost(data.post);
-        }
-      },
-    });
+    const handleReactionUpdate = (event: CustomEvent) => {
+      const { post: updatedPost } = event.detail;
+      // WebSocket broadcasts don't include user_reaction (it's user-agnostic)
+      // Preserve the current user's reaction state while updating counts
+      if (updatedPost && updatedPost.id === post.id) {
+        setPost((currentPost) => ({
+          ...updatedPost,
+          // Preserve user_reaction if the broadcast doesn't include it
+          user_reaction: updatedPost.user_reaction !== undefined ? updatedPost.user_reaction : currentPost.user_reaction
+        }));
+      }
+    };
 
-    // Cleanup - unsubscribe this specific listener
+    // Listen to user's own reaction updates (from any view)
+    const handleUserReactionUpdate = (event: CustomEvent) => {
+      const { postId, userReaction, reactionsCount } = event.detail;
+      if (postId === post.id) {
+        setPost((currentPost) => ({
+          ...currentPost,
+          user_reaction: userReaction,
+          reactions_count: reactionsCount
+        }));
+      }
+    };
+
+    window.addEventListener('ws:post:update', handleUpdatePost as EventListener);
+    window.addEventListener('ws:post:delete', handleDeletePost as EventListener);
+    window.addEventListener('ws:post:reaction', handleReactionUpdate as EventListener);
+    window.addEventListener('user-reaction-update', handleUserReactionUpdate as EventListener);
+
     return () => {
-      wsClient.unsubscribeFromPosts(listenerId);
+      window.removeEventListener('ws:post:update', handleUpdatePost as EventListener);
+      window.removeEventListener('ws:post:delete', handleDeletePost as EventListener);
+      window.removeEventListener('ws:post:reaction', handleReactionUpdate as EventListener);
+      window.removeEventListener('user-reaction-update', handleUserReactionUpdate as EventListener);
     };
   }, [post.id]);
 
@@ -76,9 +98,17 @@ export function PostDetailClient({
       {/* Post Reactions with real-time updates */}
       <PostReactions
         postId={post.id}
-        initialReactionsCount={post.reactions_count}
+        initialReactionsCount={post.reactions_count || 0}
         initialUserReaction={post.user_reaction}
         isAuthenticated={isAuthenticated}
+        onReaction={(reaction, reactionsCount) => {
+          // Update post state with new reaction and count
+          setPost((currentPost) => ({
+            ...currentPost,
+            user_reaction: reaction,
+            reactions_count: reactionsCount !== undefined ? reactionsCount : currentPost.reactions_count
+          }));
+        }}
       />
     </>
   );

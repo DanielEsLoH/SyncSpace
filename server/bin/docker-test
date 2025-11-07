@@ -1,8 +1,14 @@
 #!/bin/bash
 set -e
 
+export DATABASE_URL="postgresql://postgres:postgres@db:5432/syncspace_test"
+export RAILS_ENV=test
+
 echo "Setting up test database..."
-DATABASE_URL="postgresql://postgres:postgres@db:5432/syncspace_test" RAILS_ENV=test bin/rails db:create db:migrate
+# Create database if it doesn't exist (ignore error if it already exists)
+COVERAGE=false bin/rails db:create 2>/dev/null || true
+# Run migrations
+COVERAGE=false bin/rails db:migrate
 
 echo "Running tests..."
-DATABASE_URL="postgresql://postgres:postgres@db:5432/syncspace_test" RAILS_ENV=test bundle exec rspec "$@"
+bundle exec rspec "$@"

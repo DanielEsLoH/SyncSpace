@@ -218,7 +218,7 @@ export interface Notification {
 /**
  * Polymorphic notifiable data
  */
-export type NotifiableData = CommentNotifiable | ReactionNotifiable;
+export type NotifiableData = CommentNotifiable | ReactionNotifiable | PostNotifiable;
 
 /**
  * Comment notifiable payload
@@ -239,6 +239,16 @@ export interface ReactionNotifiable {
   reaction_type: ReactionType;
   reactionable_type: ReactionableType;
   reactionable_id: number;
+}
+
+/**
+ * Post notifiable payload (for mentions in posts)
+ */
+export interface PostNotifiable {
+  type: 'Post';
+  id: number;
+  title: string;
+  description: string; // Truncated to 100 chars
 }
 
 // ============================================================================
@@ -348,6 +358,7 @@ export interface ReactionToggleResponse {
   action: 'added' | 'removed' | 'changed';
   message: string;
   reactions_count: number;
+  user_reaction: Reaction | null;
 }
 
 /**
@@ -411,7 +422,7 @@ export interface CreatePostData {
   title: string;
   description: string;
   picture?: File | string;
-  tag_ids?: number[]; // Array of tag IDs
+  tags?: string[]; // Array of tag names
 }
 
 /**
@@ -421,7 +432,7 @@ export interface UpdatePostData {
   title?: string;
   description?: string;
   picture?: File | string;
-  tag_ids?: number[]; // Array of tag IDs
+  tags?: string[]; // Array of tag names
 }
 
 /**
@@ -698,6 +709,15 @@ export function isReactionNotifiable(
   notifiable: NotifiableData | null
 ): notifiable is ReactionNotifiable {
   return notifiable !== null && notifiable.type === 'Reaction';
+}
+
+/**
+ * Type guard for PostNotifiable
+ */
+export function isPostNotifiable(
+  notifiable: NotifiableData | null
+): notifiable is PostNotifiable {
+  return notifiable !== null && notifiable.type === 'Post';
 }
 
 /**

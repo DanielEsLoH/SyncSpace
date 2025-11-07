@@ -26,11 +26,16 @@ import { cn } from '@/lib/utils';
  * - No unnecessary re-renders
  */
 
+import { useFeedState } from '@/contexts/FeedStateContext';
+
+// ... (existing imports)
+
 interface PostReactionsProps {
   postId: number;
   initialReactionsCount: number;
   initialUserReaction: Reaction | null | undefined;
   isAuthenticated: boolean;
+  onReaction?: (reaction: Reaction | null, reactionsCount?: number) => void; // Optional callback for non-feed contexts
 }
 
 export function PostReactions({
@@ -38,27 +43,37 @@ export function PostReactions({
   initialReactionsCount,
   initialUserReaction,
   isAuthenticated,
+  onReaction,
 }: PostReactionsProps) {
-  const [reactionsCount, setReactionsCount] = useState(initialReactionsCount);
-  const [userReaction, setUserReaction] = useState<Reaction | null>(
-    initialUserReaction || null
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  // Try to use FeedStateContext if available, otherwise fall back to callback
+  let updatePostReaction: ((postId: number, reaction: Reaction | null) => void) | undefined;
+  let isInFeedContext = false;
+  try {
+    const feedState = useFeedState();
+    updatePostReaction = feedState.updatePostReaction;
+    isInFeedContext = true;
+  } catch {
+    // FeedStateContext not available, will use callback instead
+    updatePostReaction = undefined;
+    isInFeedContext = false;
+  }
 
-  // Optimistic state for instant UI feedback
+  const [isLoading, setIsLoading] = useState(false);
+  const [reactionsCount, setReactionsCount] = useState(initialReactionsCount);
+  const [userReaction, setUserReaction] = useState<Reaction | null | undefined>(initialUserReaction);
   const [optimisticReaction, setOptimisticReaction] = useOptimistic(
     userReaction,
     (state, newReaction: Reaction | null) => newReaction
   );
 
-  // Sync with prop changes (for real-time updates from WebSocket)
+  // Always sync state when props change - compare by reaction type, not object reference
   useEffect(() => {
+    setUserReaction(initialUserReaction);
     setReactionsCount(initialReactionsCount);
-  }, [initialReactionsCount]);
+  }, [initialUserReaction?.reaction_type, initialUserReaction?.id, initialReactionsCount]);
 
-  useEffect(() => {
-    setUserReaction(initialUserReaction || null);
-  }, [initialUserReaction]);
+  // Use optimistic state for feed, regular state for post detail
+  const currentReaction = isInFeedContext ? optimisticReaction : userReaction;
 
   const handleReact = async (reactionType: ReactionType) => {
     if (!isAuthenticated) {
@@ -68,31 +83,56 @@ export function PostReactions({
 
     if (isLoading) return;
 
-    // Store previous state for rollback
-    const previousReaction = userReaction;
-    const previousCount = reactionsCount;
-
-    // Determine if we're adding or removing a reaction
-    const isSameReaction = userReaction?.reaction_type === reactionType;
+    const isSameReaction = currentReaction?.reaction_type === reactionType;
     const newReaction = isSameReaction ? null : { reaction_type: reactionType } as Reaction;
-    const countDelta = isSameReaction ? -1 : (userReaction ? 0 : 1);
 
-    // Optimistic update wrapped in startTransition
-    startTransition(() => {
-      setOptimisticReaction(newReaction);
-    });
+    // Apply optimistic update for instant UI feedback
     setUserReaction(newReaction);
-    setReactionsCount(reactionsCount + countDelta);
+    if (isInFeedContext) {
+      startTransition(() => {
+        setOptimisticReaction(newReaction);
+      });
+    }
+
     setIsLoading(true);
 
     try {
-      // Make API call
       const response = await postsService.reactToPost(postId, reactionType);
 
-      // Update count with actual server response
+      // Update state with server's authoritative response
+      const serverReaction = response.user_reaction || null;
+
+      // Update local state immediately
+      setUserReaction(serverReaction);
       setReactionsCount(response.reactions_count);
 
-      // Success feedback
+      // Broadcast user's own reaction to all views via custom event
+      // This is separate from WebSocket broadcasts which don't include user_reaction
+      window.dispatchEvent(new CustomEvent('user-reaction-update', {
+        detail: {
+          postId,
+          userReaction: serverReaction,
+          reactionsCount: response.reactions_count
+        }
+      }));
+
+      if (updatePostReaction) {
+        // Using FeedStateContext
+        updatePostReaction(postId, serverReaction);
+      } else if (onReaction) {
+        // Using callback for non-feed contexts
+        // Pass both reaction and count to parent
+        onReaction(serverReaction, response.reactions_count);
+      }
+
+      // Update optimistic state for feed context
+      if (isInFeedContext) {
+        startTransition(() => {
+          setOptimisticReaction(serverReaction);
+        });
+      }
+
+      // User feedback
       if (response.action === 'removed') {
         toast.success('Reaction removed');
       } else if (response.action === 'changed') {
@@ -101,14 +141,16 @@ export function PostReactions({
         toast.success(`Reacted with ${reactionType}`);
       }
     } catch (error: any) {
-      // Rollback on error
-      startTransition(() => {
-        setOptimisticReaction(previousReaction);
-      });
-      setUserReaction(previousReaction);
-      setReactionsCount(previousCount);
-      console.error('Failed to react:', error);
       toast.error(error.response?.data?.error || 'Failed to react to post');
+
+      // Rollback update on error
+      setUserReaction(initialUserReaction);
+      setReactionsCount(initialReactionsCount);
+      if (isInFeedContext) {
+        startTransition(() => {
+          setOptimisticReaction(initialUserReaction || null);
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -125,17 +167,17 @@ export function PostReactions({
           disabled={isLoading || !isAuthenticated}
           className={cn(
             'h-9 px-3 gap-2 rounded-full transition-all hover:scale-105',
-            optimisticReaction?.reaction_type === 'like'
+            currentReaction?.reaction_type === 'like'
               ? 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
               : 'hover:bg-blue-50 dark:hover:bg-blue-950'
           )}
           aria-label="Like this post"
-          aria-pressed={optimisticReaction?.reaction_type === 'like'}
+          aria-pressed={currentReaction?.reaction_type === 'like'}
         >
           <ThumbsUp
             className={cn(
               'h-4 w-4 transition-transform',
-              optimisticReaction?.reaction_type === 'like' && 'fill-current scale-110'
+              currentReaction?.reaction_type === 'like' && 'fill-current scale-110'
             )}
           />
           <span className="text-sm font-medium">Like</span>
@@ -148,17 +190,17 @@ export function PostReactions({
           disabled={isLoading || !isAuthenticated}
           className={cn(
             'h-9 px-3 gap-2 rounded-full transition-all hover:scale-105',
-            optimisticReaction?.reaction_type === 'love'
+            currentReaction?.reaction_type === 'love'
               ? 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'
               : 'hover:bg-red-50 dark:hover:bg-red-950'
           )}
           aria-label="Love this post"
-          aria-pressed={optimisticReaction?.reaction_type === 'love'}
+          aria-pressed={currentReaction?.reaction_type === 'love'}
         >
           <Heart
             className={cn(
               'h-4 w-4 transition-transform',
-              optimisticReaction?.reaction_type === 'love' && 'fill-current scale-110'
+              currentReaction?.reaction_type === 'love' && 'fill-current scale-110'
             )}
           />
           <span className="text-sm font-medium">Love</span>
@@ -171,17 +213,17 @@ export function PostReactions({
           disabled={isLoading || !isAuthenticated}
           className={cn(
             'h-9 px-3 gap-2 rounded-full transition-all hover:scale-105',
-            optimisticReaction?.reaction_type === 'dislike'
+            currentReaction?.reaction_type === 'dislike'
               ? 'bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700'
               : 'hover:bg-gray-50 dark:hover:bg-gray-900'
           )}
           aria-label="Dislike this post"
-          aria-pressed={optimisticReaction?.reaction_type === 'dislike'}
+          aria-pressed={currentReaction?.reaction_type === 'dislike'}
         >
           <ThumbsDown
             className={cn(
               'h-4 w-4 transition-transform',
-              optimisticReaction?.reaction_type === 'dislike' && 'fill-current scale-110'
+              currentReaction?.reaction_type === 'dislike' && 'fill-current scale-110'
             )}
           />
           <span className="text-sm font-medium">Dislike</span>

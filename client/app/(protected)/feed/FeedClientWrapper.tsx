@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, createContext, useContext, ReactNode } from 'react';
+import { useState, createContext, useContext, ReactNode, useRef, useCallback, useEffect } from 'react';
 import { CreatePostDialog } from '@/components/posts/CreatePostDialog';
 import { EditPostDialog } from '@/components/posts/EditPostDialog';
 import { Post } from '@/types';
+import { revalidatePostsFeed } from '@/lib/actions';
+import { useFeedState } from '@/contexts/FeedStateContext';
 
 interface FeedContextType {
   openCreateDialog: () => void;
   openEditDialog: (post: Post) => void;
+  registerPostCreatedHandler: (handler: (post: Post) => void) => void;
+  registerPostUpdatedHandler: (handler: (post: Post) => void) => void;
 }
 
 const FeedContext = createContext<FeedContextType | undefined>(undefined);
@@ -24,33 +28,33 @@ interface FeedClientWrapperProps {
   children: ReactNode;
 }
 
-/**
- * Client Wrapper for Feed Page
- *
- * Manages client-side state for:
- * - Create/Edit post dialogs
- * - Dialog open/close state
- *
- * Provides context for child components to trigger dialogs.
- * This wrapper allows the main page to remain a Server Component
- * while still providing interactive dialog functionality.
- *
- * Note: Navigation is now handled by the (protected) layout,
- * not in individual pages. This ensures consistent navigation
- * across all protected routes.
- */
 export function FeedClientWrapper({ children }: FeedClientWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const { posts, addPost, updatePost } = useFeedState();
+  const postCreatedHandlerRef = useRef<((post: Post) => void) | null>(null);
+  const postUpdatedHandlerRef = useRef<((post: Post) => void) | null>(null);
 
   const handleCreatePost = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const handlePostCreated = (newPost: Post) => {
+  const handlePostCreated = async (newPost: Post) => {
     setIsCreateDialogOpen(false);
-    // Post will be added via WebSocket, no need to refresh
+    addPost(newPost);
+
+    // Revalidate the feed cache to ensure data is fresh on next navigation
+    await revalidatePostsFeed();
+
+    // Broadcast custom event for optimistic updates across all pages
+    // Mark source as 'feed' so PostFeed can ignore it (already handled via registered handler)
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('post-created-optimistic', {
+        detail: { post: newPost, source: 'feed' }
+      });
+      window.dispatchEvent(event);
+    }
   };
 
   const openEditDialog = (post: Post) => {
@@ -61,12 +65,22 @@ export function FeedClientWrapper({ children }: FeedClientWrapperProps) {
   const handlePostUpdated = (updatedPost: Post) => {
     setIsEditDialogOpen(false);
     setEditingPost(null);
-    // Post will be updated via WebSocket, no need to refresh
+    updatePost(updatedPost);
   };
+
+  const registerPostCreatedHandler = useCallback((handler: (post: Post) => void) => {
+    postCreatedHandlerRef.current = handler;
+  }, []);
+
+  const registerPostUpdatedHandler = useCallback((handler: (post: Post) => void) => {
+    postUpdatedHandlerRef.current = handler;
+  }, []);
 
   const contextValue: FeedContextType = {
     openCreateDialog: handleCreatePost,
     openEditDialog,
+    registerPostCreatedHandler,
+    registerPostUpdatedHandler,
   };
 
   return (

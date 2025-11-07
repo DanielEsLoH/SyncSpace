@@ -66,7 +66,7 @@ RSpec.describe Notification, type: :model do
       end
 
       it 'rejects invalid notification types' do
-        invalid_types = ['invalid', 'foo', 'bar', '']
+        invalid_types = [ 'invalid', 'foo', 'bar', '' ]
         invalid_types.each do |type|
           notification = build(:notification, user: user, actor: actor, notifiable: post, notification_type: type)
           expect(notification).not_to be_valid
@@ -298,7 +298,7 @@ RSpec.describe Notification, type: :model do
       end
 
       it 'contains expected notification types' do
-        expected_types = ['comment_on_post', 'reply_to_comment', 'mention', 'reaction_on_post', 'reaction_on_comment']
+        expected_types = [ 'comment_on_post', 'reply_to_comment', 'mention', 'reaction_on_post', 'reaction_on_comment' ]
         expect(Notification::NOTIFICATION_TYPES).to match_array(expected_types)
       end
 

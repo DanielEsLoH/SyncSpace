@@ -1,16 +1,16 @@
 module Api
   module V1
     class UsersController < ApplicationController
-      skip_before_action :authenticate_request, only: [:show, :posts, :search]
-      before_action :authenticate_optional, only: [:show, :posts, :search]
-      before_action :set_user, only: [:show, :update, :posts, :update_preferences]
-      before_action :authorize_user_update!, only: [:update, :update_preferences]
+      skip_before_action :authenticate_request, only: [ :show, :posts, :search ]
+      before_action :authenticate_optional, only: [ :show, :posts, :search ]
+      before_action :set_user, only: [ :show, :update, :posts, :update_preferences ]
+      before_action :authorize_user_update!, only: [ :update, :update_preferences ]
 
       # GET /api/v1/users/search
       def search
-        query = params[:q] || ''
+        query = params[:q] || ""
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 10, 50].min
+        per_page = [ params[:per_page]&.to_i || 10, 50 ].min
 
         if query.blank?
           render json: { users: [], meta: { current_page: page, per_page: per_page, total_count: 0, total_pages: 0 } }
@@ -18,7 +18,7 @@ module Api
         end
 
         # Search in name and email
-        users = User.where('name ILIKE ? OR email ILIKE ?', "%#{query}%", "%#{query}%")
+        users = User.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
                     .order(created_at: :desc)
 
         total_count = users.count
@@ -44,7 +44,7 @@ module Api
       def update
         if @user.update(user_params)
           render json: {
-            message: 'Profile updated successfully',
+            message: "Profile updated successfully",
             user: user_response(@user)
           }, status: :ok
         else
@@ -56,7 +56,7 @@ module Api
       def update_preferences
         if @user.update(preferences_params)
           render json: {
-            message: 'Preferences updated successfully',
+            message: "Preferences updated successfully",
             preferences: {
               theme: @user.theme,
               language: @user.language
@@ -70,7 +70,7 @@ module Api
       # GET /api/v1/users/:id/posts
       def posts
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 10, 50].min
+        per_page = [ params[:per_page]&.to_i || 10, 50 ].min
 
         # Get total count first (before group by)
         total_count = @user.posts.count
@@ -83,7 +83,7 @@ module Api
                              COUNT(DISTINCT comments.id) as comments_count,
                              COUNT(DISTINCT reactions.id) as reactions_count')
                      .group("posts.id")
-                     .order('posts.created_at DESC')
+                     .order("posts.created_at DESC")
                      .offset((page - 1) * per_page)
                      .limit(per_page)
 
@@ -103,12 +103,12 @@ module Api
       def set_user
         @user = User.find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'User not found' }, status: :not_found
+        render json: { error: "User not found" }, status: :not_found
       end
 
       def authorize_user_update!
         unless @user.id == current_user.id
-          render json: { error: 'Forbidden: You can only update your own profile' }, status: :forbidden
+          render json: { error: "Forbidden: You can only update your own profile" }, status: :forbidden
         end
       end
 
@@ -147,7 +147,7 @@ module Api
         {
           id: post.id,
           title: post.title,
-          description: post.description,
+          description: post.description.length > 150 ? "#{post.description[0..149]}..." : post.description,
           picture: post.picture,
           user: {
             id: post.user.id,

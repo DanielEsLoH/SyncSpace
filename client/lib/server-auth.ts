@@ -43,7 +43,6 @@ export async function getServerAuth(): Promise<{
     const user = JSON.parse(userCookie) as User;
     return { isAuthenticated: true, user, token };
   } catch (error) {
-    console.error('Failed to parse user cookie:', error);
     return { isAuthenticated: false, user: null, token: null };
   }
 }
@@ -86,7 +85,6 @@ export async function getVerifiedServerAuth(): Promise<{
     const data = await response.json();
     return { isAuthenticated: true, user: data.user, token };
   } catch (error) {
-    console.error('Auth verification failed:', error);
     return { isAuthenticated: false, user: null, token: null };
   }
 }

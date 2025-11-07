@@ -45,7 +45,6 @@ export async function CommentsSection({
     comments = response.comments || [];
     totalCount = comments.length;
   } catch (error) {
-    console.error('Failed to fetch comments:', error);
     // Continue with empty comments array
   }
 

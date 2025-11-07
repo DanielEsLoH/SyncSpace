@@ -63,7 +63,6 @@ export async function TrendingTags() {
       </Card>
     );
   } catch (error) {
-    console.error('Failed to fetch trending tags:', error);
     // Return null on error to gracefully degrade
     return null;
   }

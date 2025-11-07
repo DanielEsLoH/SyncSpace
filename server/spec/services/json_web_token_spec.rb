@@ -47,7 +47,7 @@ RSpec.describe JsonWebToken do
 
       it 'accepts different expiration periods' do
         travel_to Time.current do
-          expiration_times = [1.hour.from_now, 12.hours.from_now, 48.hours.from_now]
+          expiration_times = [ 1.hour.from_now, 12.hours.from_now, 48.hours.from_now ]
 
           expiration_times.each do |exp_time|
             token = described_class.encode(payload, exp_time)
@@ -81,13 +81,13 @@ RSpec.describe JsonWebToken do
       it 'handles nested data structures' do
         complex_payload = {
           user_id: 123,
-          metadata: { roles: ['admin', 'user'], permissions: { read: true, write: false } }
+          metadata: { roles: [ 'admin', 'user' ], permissions: { read: true, write: false } }
         }
         token = described_class.encode(complex_payload)
         decoded = JWT.decode(token, described_class::SECRET_KEY)[0]
 
         expect(decoded['user_id']).to eq(123)
-        expect(decoded['metadata']['roles']).to eq(['admin', 'user'])
+        expect(decoded['metadata']['roles']).to eq([ 'admin', 'user' ])
         expect(decoded['metadata']['permissions']['read']).to eq(true)
       end
 
@@ -134,7 +134,7 @@ RSpec.describe JsonWebToken do
         complex_payload = {
           user_id: 789,
           email: 'complex@example.com',
-          roles: ['admin', 'moderator'],
+          roles: [ 'admin', 'moderator' ],
           settings: { theme: 'dark', notifications: true }
         }
         token = described_class.encode(complex_payload)
@@ -142,7 +142,7 @@ RSpec.describe JsonWebToken do
 
         expect(decoded[:user_id]).to eq(789)
         expect(decoded[:email]).to eq('complex@example.com')
-        expect(decoded[:roles]).to eq(['admin', 'moderator'])
+        expect(decoded[:roles]).to eq([ 'admin', 'moderator' ])
         expect(decoded[:settings]).to eq({ 'theme' => 'dark', 'notifications' => true })
       end
     end

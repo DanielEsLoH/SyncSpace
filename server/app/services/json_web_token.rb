@@ -1,5 +1,5 @@
 class JsonWebToken
-  SECRET_KEY = ENV.fetch('JWT_SECRET_KEY', Rails.application.credentials.secret_key_base)
+  SECRET_KEY = ENV.fetch("JWT_SECRET_KEY", Rails.application.credentials.secret_key_base)
 
   # Encode an access token (short-lived, 24 hours)
   #
@@ -8,7 +8,7 @@ class JsonWebToken
   # @return [String] The encoded JWT token
   def self.encode(payload, exp = 24.hours.from_now)
     payload[:exp] = exp.to_i
-    payload[:type] = 'access' # Mark as access token
+    payload[:type] = "access" # Mark as access token
     JWT.encode(payload, SECRET_KEY)
   end
 
@@ -24,7 +24,7 @@ class JsonWebToken
     exp = 7.days.from_now
     payload = {
       user_id: user_id,
-      type: 'refresh',
+      type: "refresh",
       exp: exp.to_i,
       jti: SecureRandom.uuid # JWT ID for additional security
     }
@@ -49,7 +49,7 @@ class JsonWebToken
   def self.decode_refresh_token(token)
     decoded = decode(token)
     # Verify it's actually a refresh token
-    decoded if decoded && decoded[:type] == 'refresh'
+    decoded if decoded && decoded[:type] == "refresh"
   rescue
     nil
   end

@@ -1,7 +1,7 @@
 class Notification < ApplicationRecord
   belongs_to :user
   belongs_to :notifiable, polymorphic: true
-  belongs_to :actor, class_name: 'User'
+  belongs_to :actor, class_name: "User"
 
   # Constants
   NOTIFICATION_TYPES = %w[
@@ -33,7 +33,14 @@ class Notification < ApplicationRecord
   end
 
   def mark_as_read!
-    update(read_at: Time.current) unless read?
+    return if read?
+
+    update(read_at: Time.current)
+    # Broadcast to the user's personal notification channel
+    NotificationsChannel.broadcast_to(user, {
+      action: "notification_read",
+      notification_id: id
+    })
   end
 
   def mark_as_unread!
@@ -42,7 +49,12 @@ class Notification < ApplicationRecord
 
   # Class methods
   def self.mark_all_as_read(user)
-    unread.where(user: user).update_all(read_at: Time.current)
+    count = unread.where(user: user).update_all(read_at: Time.current)
+    # Broadcast to the user's personal notification channel
+    NotificationsChannel.broadcast_to(user, {
+      action: "all_notifications_read"
+    })
+    count
   end
 
   private
@@ -50,26 +62,72 @@ class Notification < ApplicationRecord
   def broadcast_notification
     # Broadcast to the user's personal notification channel
     NotificationsChannel.broadcast_to(user, {
-      action: 'new_notification',
+      action: "new_notification",
       notification: notification_data
     })
   end
 
   def notification_data
-    {
-      id: id,
-      notification_type: notification_type,
-      read_at: read_at,
-      created_at: created_at,
-      actor: {
+    # Handle case where actor was deleted
+    actor_data = if actor
+      {
         id: actor.id,
         name: actor.name,
         profile_picture: actor.profile_picture
-      },
-      notifiable: {
-        id: notifiable.id,
-        type: notifiable_type
       }
+    else
+      {
+        id: nil,
+        name: "Deleted User",
+        profile_picture: nil
+      }
+    end
+
+    {
+      id: id,
+      notification_type: notification_type,
+      read: read?,
+      actor: actor_data,
+      notifiable: notifiable_data,
+      created_at: created_at
     }
+  end
+
+  def notifiable_data
+    # Return nil if the notifiable object has been deleted
+    return nil if notifiable.nil?
+
+    case notifiable_type
+    when "Comment"
+      comment = notifiable
+      # Additional safety check for associated post
+      return nil if comment.root_post.nil?
+
+      {
+        type: "Comment",
+        id: comment.id,
+        description: comment.description[0..100],
+        post_id: comment.root_post.id
+      }
+    when "Reaction"
+      reaction = notifiable
+      {
+        type: "Reaction",
+        id: reaction.id,
+        reaction_type: reaction.reaction_type,
+        reactionable_type: reaction.reactionable_type,
+        reactionable_id: reaction.reactionable_id
+      }
+    when "Post"
+      post = notifiable
+      {
+        type: "Post",
+        id: post.id,
+        title: post.title,
+        description: post.description[0..100]
+      }
+    else
+      nil
+    end
   end
 end

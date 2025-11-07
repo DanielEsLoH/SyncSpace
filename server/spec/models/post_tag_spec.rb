@@ -215,7 +215,7 @@ RSpec.describe PostTag, type: :model do
       tag1 = create(:tag, name: 'tag1', color: '#FF0000')
       tag2 = create(:tag, name: 'tag2', color: '#00FF00')
 
-      post.tags << [tag1, tag2]
+      post.tags << [ tag1, tag2 ]
       expect(post.tags.count).to eq(2)
 
       # Remove tag using ActiveRecord association

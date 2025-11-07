@@ -8,7 +8,7 @@ class BrevoDelivery
 
     send_smtp_email = SibApiV3Sdk::SendSmtpEmail.new(
       sender: {
-        name: mail[:from].display_names.first || 'SyncSpace',
+        name: mail[:from].display_names.first || "SyncSpace",
         email: mail.from.first
       },
       to: mail.to.map { |email| { email: email } },

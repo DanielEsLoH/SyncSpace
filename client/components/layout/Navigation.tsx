@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Home,
-  Search,
   Bell,
   Plus,
   User,
@@ -25,21 +25,21 @@ import {
   Menu,
   X,
   FileText,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TrendingTagsModal } from "@/components/tags/TrendingTagsModal";
 
 interface NavigationProps {
   onCreatePost?: () => void;
-  notificationCount?: number;
 }
 
-export function Navigation({
-  onCreatePost,
-  notificationCount = 0,
-}: NavigationProps) {
+export function Navigation({ onCreatePost }: NavigationProps) {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isTrendingModalOpen, setIsTrendingModalOpen] = useState(false);
 
   const getInitials = (name: string) => {
     if (!name) return "??";
@@ -57,12 +57,11 @@ export function Navigation({
     ...(user
       ? [{ href: `/users/${user.id}`, label: "My Posts", icon: FileText }]
       : []),
-    { href: "/search", label: "Search", icon: Search },
     {
       href: "/notifications",
       label: "Notifications",
       icon: Bell,
-      badge: notificationCount,
+      badge: unreadCount,
     },
   ];
 
@@ -116,6 +115,17 @@ export function Navigation({
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Trending Tags Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsTrendingModalOpen(true)}
+              className="gap-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden lg:inline">Trending</span>
+            </Button>
+
             {/* Create Post Button */}
             <Button size="sm" onClick={onCreatePost} className="gap-2">
               <Plus className="h-4 w-4" />
@@ -174,6 +184,14 @@ export function Navigation({
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsTrendingModalOpen(true)}
+              className="h-9 w-9 p-0"
+            >
+              <TrendingUp className="h-4 w-4" />
+            </Button>
             <Button size="sm" onClick={onCreatePost} className="h-9 w-9 p-0">
               <Plus className="h-4 w-4" />
             </Button>
@@ -269,6 +287,12 @@ export function Navigation({
           </div>
         )}
       </div>
+
+      {/* Trending Tags Modal */}
+      <TrendingTagsModal
+        isOpen={isTrendingModalOpen}
+        onClose={() => setIsTrendingModalOpen(false)}
+      />
     </header>
   );
 }

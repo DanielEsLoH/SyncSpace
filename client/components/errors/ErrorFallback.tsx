@@ -34,7 +34,6 @@ export function ErrorFallback({
   useEffect(() => {
     // Log error to console in development
     if (process.env.NODE_ENV === 'development' && error) {
-      console.error('Error caught by fallback:', error);
     }
 
     // In production, you would send this to an error reporting service

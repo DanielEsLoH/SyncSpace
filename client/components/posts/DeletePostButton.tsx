@@ -33,7 +33,6 @@ export function DeletePostButton({ postId }: DeletePostButtonProps) {
       toast.success('Post deleted successfully');
       router.push('/feed');
     } catch (error: any) {
-      console.error('Failed to delete post:', error);
       toast.error(error.response?.data?.error || 'Failed to delete post');
       setIsDeleting(false);
     }

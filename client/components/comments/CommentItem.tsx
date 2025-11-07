@@ -65,7 +65,6 @@ export function CommentItem({
     try {
       await onDelete?.(comment.id);
     } catch (error) {
-      console.error("Failed to delete comment:", error);
       setIsDeleting(false);
     }
   };

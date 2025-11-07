@@ -16,11 +16,11 @@ module ApplicationCable
         begin
           decoded_token = JWT.decode(
             token,
-            ENV.fetch('JWT_SECRET_KEY'),
+            ENV.fetch("JWT_SECRET_KEY"),
             true,
-            { algorithm: 'HS256' }
+            { algorithm: "HS256" }
           )
-          user_id = decoded_token[0]['user_id']
+          user_id = decoded_token[0]["user_id"]
           user = User.find_by(id: user_id)
 
           return user if user
@@ -36,11 +36,11 @@ module ApplicationCable
     def extract_token_from_headers
       # Try to extract from sec-websocket-protocol header
       # This is commonly used for WebSocket authentication
-      if request.headers['Sec-WebSocket-Protocol'].present?
-        protocols = request.headers['Sec-WebSocket-Protocol'].split(',').map(&:strip)
+      if request.headers["Sec-WebSocket-Protocol"].present?
+        protocols = request.headers["Sec-WebSocket-Protocol"].split(",").map(&:strip)
         # Look for a protocol that starts with 'token-'
-        token_protocol = protocols.find { |p| p.start_with?('token-') }
-        return token_protocol.gsub('token-', '') if token_protocol
+        token_protocol = protocols.find { |p| p.start_with?("token-") }
+        return token_protocol.gsub("token-", "") if token_protocol
       end
 
       nil

@@ -94,7 +94,6 @@ export const tokenStorage = {
     try {
       return JSON.parse(userStr);
     } catch (error) {
-      console.error('Failed to parse user cookie:', error);
       return null;
     }
   },

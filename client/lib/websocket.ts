@@ -15,11 +15,18 @@ type CommentsCallbacks = {
   onDeleteComment?: (commentId: number) => void;
 };
 
+type NotificationsCallbacks = {
+  onNewNotification?: (notification: any) => void;
+  onNotificationRead?: (notificationId: number) => void;
+  onAllNotificationsRead?: () => void;
+};
+
 class WebSocketClient {
   private consumer: Consumer | null = null;
   private subscriptions: Map<string, Subscription> = new Map();
   private postsListeners: Map<string, PostsCallbacks> = new Map();
   private commentsListeners: Map<string, CommentsCallbacks> = new Map();
+  private notificationsListeners: Map<string, NotificationsCallbacks> = new Map();
   private listenerIdCounter = 0;
 
   connect(token?: string) {
@@ -40,6 +47,7 @@ class WebSocketClient {
       this.subscriptions.clear();
       this.postsListeners.clear();
       this.commentsListeners.clear();
+      this.notificationsListeners.clear();
     }
   }
 
@@ -59,8 +67,7 @@ class WebSocketClient {
     if (!this.subscriptions.has('posts')) {
       const subscription = this.consumer.subscriptions.create('PostsChannel', {
         received: (data: any) => {
-          // Broadcast to ALL listeners
-          this.postsListeners.forEach((listener) => {
+          this.postsListeners.forEach((listener, listenerId) => {
             switch (data.action) {
               case 'new_post':
                 listener.onNewPost?.(data.post);
@@ -131,7 +138,6 @@ class WebSocketClient {
     if (!this.subscriptions.has('comments')) {
       const subscription = this.consumer.subscriptions.create('CommentsChannel', {
         received: (data: any) => {
-          // Broadcast to ALL listeners
           this.commentsListeners.forEach((listener) => {
             switch (data.action) {
               case 'new_comment':
@@ -200,34 +206,56 @@ class WebSocketClient {
     }
   }
 
-  // Subscribe to notifications channel (requires authentication)
-  subscribeToNotifications(callbacks: {
-    onNewNotification?: (notification: any) => void;
-    onNotificationRead?: (notificationId: number) => void;
-    onAllNotificationsRead?: () => void;
-  }) {
+  // Subscribe to notifications channel (supports multiple subscribers)
+  subscribeToNotifications(callbacks: NotificationsCallbacks): string {
     if (!this.consumer) {
       throw new Error('WebSocket not connected');
     }
 
-    const subscription = this.consumer.subscriptions.create('NotificationsChannel', {
-      received: (data: any) => {
-        switch (data.action) {
-          case 'new_notification':
-            callbacks.onNewNotification?.(data.notification);
-            break;
-          case 'notification_read':
-            callbacks.onNotificationRead?.(data.notification_id);
-            break;
-          case 'all_notifications_read':
-            callbacks.onAllNotificationsRead?.();
-            break;
-        }
-      },
-    });
+    // Generate unique listener ID
+    const listenerId = `notifications-listener-${++this.listenerIdCounter}`;
 
-    this.subscriptions.set('notifications', subscription);
-    return subscription;
+    // Store callbacks for this listener
+    this.notificationsListeners.set(listenerId, callbacks);
+
+    // Create subscription only if it doesn't exist
+    if (!this.subscriptions.has('notifications')) {
+      const subscription = this.consumer.subscriptions.create('NotificationsChannel', {
+        received: (data: any) => {
+          this.notificationsListeners.forEach((listener) => {
+            switch (data.action) {
+              case 'new_notification':
+                listener.onNewNotification?.(data.notification);
+                break;
+              case 'notification_read':
+                listener.onNotificationRead?.(data.notification_id);
+                break;
+              case 'all_notifications_read':
+                listener.onAllNotificationsRead?.();
+                break;
+            }
+          });
+        },
+      });
+
+      this.subscriptions.set('notifications', subscription);
+    }
+
+    return listenerId;
+  }
+
+  // Unsubscribe a specific listener from notifications channel
+  unsubscribeFromNotifications(listenerId: string) {
+    this.notificationsListeners.delete(listenerId);
+
+    // If no more listeners, close the subscription
+    if (this.notificationsListeners.size === 0) {
+      const subscription = this.subscriptions.get('notifications');
+      if (subscription) {
+        subscription.unsubscribe();
+        this.subscriptions.delete('notifications');
+      }
+    }
   }
 
   // Mark notification as read via WebSocket
