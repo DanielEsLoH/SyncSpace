@@ -147,7 +147,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     context 'without authentication' do
       it 'returns post with all details' do
-        post.tags << [tag1, tag2]
+        post.tags << [ tag1, tag2 ]
 
         get "/api/v1/posts/#{post.id}"
 
@@ -195,7 +195,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
           description: 'This is a new post description with enough characters',
           picture: 'http://example.com/image.jpg'
         },
-        tags: ['ruby', 'rails', 'testing']
+        tags: [ 'ruby', 'rails', 'testing' ]
       }
     end
 
@@ -218,7 +218,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post '/api/v1/posts', params: post_params, headers: auth_headers(user)
 
         created_post = Post.last
-        expect(created_post.tags.map(&:name)).to match_array(['ruby', 'rails', 'testing'])
+        expect(created_post.tags.map(&:name)).to match_array([ 'ruby', 'rails', 'testing' ])
       end
 
       it 'creates new tags if they do not exist' do
@@ -232,7 +232,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
       it 'uses existing tags if they already exist' do
         tag_count = Tag.count
         params = post_params.dup
-        params[:tags] = ['ruby', 'rails'] # existing tags
+        params[:tags] = [ 'ruby', 'rails' ] # existing tags
 
         post '/api/v1/posts', params: params, headers: auth_headers(user)
 
@@ -303,7 +303,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
           title: 'Updated Title',
           description: 'Updated description with enough characters'
         },
-        tags: ['updated', 'tags']
+        tags: [ 'updated', 'tags' ]
       }
     end
 
@@ -321,12 +321,12 @@ RSpec.describe 'Api::V1::Posts', type: :request do
       end
 
       it 'updates tags by replacing old tags with new ones' do
-        post_to_update.tags << [tag1, tag2]
+        post_to_update.tags << [ tag1, tag2 ]
 
         put "/api/v1/posts/#{post_to_update.id}", params: update_params, headers: auth_headers(user)
 
         post_to_update.reload
-        expect(post_to_update.tags.map(&:name)).to match_array(['updated', 'tags'])
+        expect(post_to_update.tags.map(&:name)).to match_array([ 'updated', 'tags' ])
       end
 
       it 'can update without changing tags' do
@@ -446,6 +446,249 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
         expect(response).to have_http_status(:not_found)
         expect(json_response[:error]).to eq('Post not found')
+      end
+    end
+  end
+
+  describe 'Mention Integration Tests' do
+    let(:mentioned_user1) { create_confirmed_user(name: 'alice', email: 'alice@example.com') }
+    let(:mentioned_user2) { create_confirmed_user(name: 'bob', email: 'bob@example.com') }
+    let(:mentioned_user3) { create_confirmed_user(name: 'charlie', email: 'charlie@example.com') }
+
+    describe 'POST /api/v1/posts with mentions' do
+      context 'when creating post with username mentions' do
+        it 'creates mention notifications for mentioned users' do
+          mentioned_user1
+          mentioned_user2
+
+          post_params = {
+            post: {
+              title: 'Important Update',
+              description: 'Hey @alice and @bob, please check this out!',
+              tag_ids: [tag1.id]
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(2)
+
+          expect(response).to have_http_status(:created)
+
+          notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
+          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(notifications.all? { |n| n.actor == user }).to be true
+          expect(notifications.all? { |n| n.notifiable_type == 'Post' }).to be true
+        end
+      end
+
+      context 'when creating post with email mentions' do
+        it 'creates mention notifications for mentioned users' do
+          mentioned_user1
+
+          post_params = {
+            post: {
+              title: 'Review Request',
+              description: 'Please review @alice@example.com',
+              tag_ids: [tag1.id]
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          notification = Notification.where(notification_type: 'mention').last
+          expect(notification.user).to eq(mentioned_user1)
+        end
+      end
+
+      context 'when creating post with mentions in title' do
+        it 'creates notifications for mentions in both title and description' do
+          mentioned_user1
+          mentioned_user2
+
+          post_params = {
+            post: {
+              title: 'For @alice',
+              description: 'And also @bob please see this',
+              tag_ids: []
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(2)
+
+          notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
+          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+        end
+      end
+
+      context 'when mentioning self' do
+        it 'does not create notification for the post author' do
+          # Set user's name to something that can be mentioned
+          user.update(name: 'testuser')
+
+          post_params = {
+            post: {
+              title: 'Self Mention',
+              description: 'I am @testuser',
+              tag_ids: []
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.not_to change(Notification, :count)
+        end
+      end
+
+      context 'when mentioning non-existent users' do
+        it 'creates notifications only for existing users' do
+          mentioned_user1
+
+          post_params = {
+            post: {
+              title: 'Mixed Mentions',
+              description: '@alice and @nonexistent_user',
+              tag_ids: []
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          notification = Notification.where(notification_type: 'mention').last
+          expect(notification.user).to eq(mentioned_user1)
+        end
+      end
+
+      context 'when mentioning multiple users' do
+        it 'creates separate notifications for each mentioned user' do
+          mentioned_user1
+          mentioned_user2
+          mentioned_user3
+
+          post_params = {
+            post: {
+              title: 'Team Update',
+              description: '@alice, @bob, and @charlie please review',
+              tag_ids: []
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(3)
+
+          notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(3)
+          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+        end
+      end
+
+      context 'when mentioning same user multiple times' do
+        it 'creates only one notification per user' do
+          mentioned_user1
+
+          post_params = {
+            post: {
+              title: '@alice please see',
+              description: 'Hey @alice, this is for @alice',
+              tag_ids: []
+            }
+          }
+
+          expect {
+            post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+        end
+      end
+    end
+
+    describe 'PUT /api/v1/posts/:id with mentions' do
+      let(:existing_post) do
+        create(:post, user: user, title: 'Original', description: 'No mentions', tag_ids: [tag1.id])
+      end
+
+      context 'when updating post to add mentions' do
+        it 'creates new mention notifications' do
+          mentioned_user1
+          existing_post
+
+          update_params = {
+            post: {
+              title: 'Updated Title',
+              description: 'Now mentioning @alice'
+            }
+          }
+
+          expect {
+            put "/api/v1/posts/#{existing_post.id}", params: update_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          notification = Notification.where(notification_type: 'mention').last
+          expect(notification.user).to eq(mentioned_user1)
+          expect(notification.notifiable).to eq(existing_post)
+        end
+      end
+
+      context 'when updating post with existing mentions' do
+        it 'does not create duplicate notifications' do
+          mentioned_user1
+          post_with_mention = create(:post,
+            user: user,
+            title: 'Original',
+            description: 'Hey @alice',
+            tag_ids: [tag1.id]
+          )
+
+          # First mention creates notification
+          MentionService.process_mentions(post_with_mention, user)
+
+          # Update should not create duplicate
+          update_params = {
+            post: {
+              description: 'Still mentioning @alice'
+            }
+          }
+
+          expect {
+            put "/api/v1/posts/#{post_with_mention.id}", params: update_params, headers: auth_headers(user)
+          }.not_to change(Notification, :count)
+        end
+      end
+
+      context 'when adding new mentions to post with existing mentions' do
+        it 'creates notifications only for newly mentioned users' do
+          mentioned_user1
+          mentioned_user2
+
+          post_with_mention = create(:post,
+            user: user,
+            title: 'Original',
+            description: 'Hey @alice',
+            tag_ids: [tag1.id]
+          )
+
+          # First mention
+          MentionService.process_mentions(post_with_mention, user)
+
+          # Add new mention
+          update_params = {
+            post: {
+              description: 'Hey @alice and now also @bob'
+            }
+          }
+
+          expect {
+            put "/api/v1/posts/#{post_with_mention.id}", params: update_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          new_notification = Notification.where(notification_type: 'mention').last
+          expect(new_notification.user).to eq(mentioned_user2)
+        end
       end
     end
   end

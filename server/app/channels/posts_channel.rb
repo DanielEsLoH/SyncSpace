@@ -11,12 +11,12 @@ class PostsChannel < ApplicationCable::Channel
 
   # Client can call this to request specific post updates
   def follow_post(data)
-    post_id = data['post_id']
+    post_id = data["post_id"]
     stream_from "post_#{post_id}" if post_id.present?
   end
 
   def unfollow_post(data)
-    post_id = data['post_id']
+    post_id = data["post_id"]
     stop_stream_from "post_#{post_id}" if post_id.present?
   end
 end

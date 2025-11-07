@@ -23,14 +23,14 @@ module Api
         if params[:search].present?
           search_term = "%#{params[:search]}%"
           base_query = base_query.left_joins(:user, :tags)
-                                 .where('posts.title ILIKE ? OR posts.description ILIKE ? OR users.name ILIKE ? OR tags.name ILIKE ?',
+                                 .where("posts.title ILIKE ? OR posts.description ILIKE ? OR users.name ILIKE ? OR tags.name ILIKE ?",
                                         search_term, search_term, search_term, search_term)
                                  .distinct
         end
 
         # Filter by tag IDs if provided
         if params[:tag_ids].present?
-          tag_ids = params[:tag_ids].is_a?(Array) ? params[:tag_ids] : [params[:tag_ids]]
+          tag_ids = params[:tag_ids].is_a?(Array) ? params[:tag_ids] : [ params[:tag_ids] ]
           base_query = base_query.joins(:post_tags).where(post_tags: { tag_id: tag_ids }).distinct
         end
 
@@ -71,11 +71,17 @@ module Api
         if post.save
           handle_tags(post, params[:tags]) if params[:tags].present?
 
+          # Create mention notifications for @mentioned users
+          MentionService.process_mentions(post, current_user)
+
           # Broadcast new post to PostsChannel
-          ActionCable.server.broadcast('posts_channel', {
-            action: 'new_post',
+          ActionCable.server.broadcast("posts_channel", {
+            action: "new_post",
             post: post_response(post)
           })
+
+          # Invalidate cache
+          Rails.cache.increment("posts_cache_version")
 
           render json: {
             message: "Post created successfully",
@@ -91,13 +97,16 @@ module Api
         if @post.update(post_params)
           handle_tags(@post, params[:tags]) if params[:tags].present?
 
+          # Create mention notifications for @mentioned users (in case new mentions were added)
+          MentionService.process_mentions(@post, current_user)
+
           # Broadcast post update
-          ActionCable.server.broadcast('posts_channel', {
-            action: 'update_post',
+          ActionCable.server.broadcast("posts_channel", {
+            action: "update_post",
             post: post_response(@post)
           })
           ActionCable.server.broadcast("post_#{@post.id}", {
-            action: 'update_post',
+            action: "update_post",
             post: post_response(@post)
           })
 
@@ -116,8 +125,8 @@ module Api
         @post.destroy
 
         # Broadcast post deletion
-        ActionCable.server.broadcast('posts_channel', {
-          action: 'delete_post',
+        ActionCable.server.broadcast("posts_channel", {
+          action: "delete_post",
           post_id: post_id
         })
 

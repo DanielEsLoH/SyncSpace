@@ -137,7 +137,6 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
 
   // Defensive check: Log warning if user data is missing
   if (!post.user || !post.user.id) {
-    console.warn(`Post ${postId} is missing user data:`, post);
   }
 
   // Determine if current user is post owner

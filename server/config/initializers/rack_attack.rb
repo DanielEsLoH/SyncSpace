@@ -18,8 +18,8 @@ class Rack::Attack
   #
   # Limit: 5 login attempts per IP per minute
   # This prevents brute force password attacks
-  throttle('login/ip', limit: 5, period: 1.minute) do |req|
-    if req.path == '/api/v1/auth/login' && req.post?
+  throttle("login/ip", limit: 5, period: 1.minute) do |req|
+    if req.path == "/api/v1/auth/login" && req.post?
       req.ip
     end
   end
@@ -28,10 +28,10 @@ class Rack::Attack
   #
   # Limit: 5 login attempts per email per minute
   # Additional protection against targeted account attacks
-  throttle('login/email', limit: 5, period: 1.minute) do |req|
-    if req.path == '/api/v1/auth/login' && req.post?
+  throttle("login/email", limit: 5, period: 1.minute) do |req|
+    if req.path == "/api/v1/auth/login" && req.post?
       # Extract email from request body
-      req.params['email']&.to_s&.downcase&.presence
+      req.params["email"]&.to_s&.downcase&.presence
     end
   end
 
@@ -39,8 +39,8 @@ class Rack::Attack
   #
   # Limit: 3 registrations per IP per 5 minutes
   # Prevents automated account creation
-  throttle('register/ip', limit: 3, period: 5.minutes) do |req|
-    if req.path == '/api/v1/auth/register' && req.post?
+  throttle("register/ip", limit: 3, period: 5.minutes) do |req|
+    if req.path == "/api/v1/auth/register" && req.post?
       req.ip
     end
   end
@@ -49,9 +49,9 @@ class Rack::Attack
   #
   # Limit: 3 reset requests per hour per email
   # Prevents email flooding and enumeration attacks
-  throttle('password_reset/email', limit: 3, period: 1.hour) do |req|
-    if req.path == '/api/v1/auth/forgot_password' && req.post?
-      req.params['email']&.to_s&.downcase&.presence
+  throttle("password_reset/email", limit: 3, period: 1.hour) do |req|
+    if req.path == "/api/v1/auth/forgot_password" && req.post?
+      req.params["email"]&.to_s&.downcase&.presence
     end
   end
 
@@ -59,8 +59,8 @@ class Rack::Attack
   #
   # Limit: 10 posts per user per minute
   # Prevents spam and excessive content creation
-  throttle('posts/user', limit: 10, period: 1.minute) do |req|
-    if req.path == '/api/v1/posts' && req.post?
+  throttle("posts/user", limit: 10, period: 1.minute) do |req|
+    if req.path == "/api/v1/posts" && req.post?
       # Extract user ID from JWT token
       extract_user_id_from_token(req)
     end
@@ -70,7 +70,7 @@ class Rack::Attack
   #
   # Limit: 20 comments per user per minute
   # Prevents comment spam
-  throttle('comments/user', limit: 20, period: 1.minute) do |req|
+  throttle("comments/user", limit: 20, period: 1.minute) do |req|
     if (req.path.match?(%r{/api/v1/posts/\d+/comments}) ||
         req.path.match?(%r{/api/v1/comments/\d+/comments})) && req.post?
       extract_user_id_from_token(req)
@@ -81,8 +81,8 @@ class Rack::Attack
   #
   # Limit: 30 searches per IP per minute
   # Prevents search abuse and scraping
-  throttle('search/ip', limit: 30, period: 1.minute) do |req|
-    if req.path == '/api/v1/search' && req.get?
+  throttle("search/ip", limit: 30, period: 1.minute) do |req|
+    if req.path == "/api/v1/search" && req.get?
       req.ip
     end
   end
@@ -91,34 +91,40 @@ class Rack::Attack
   #
   # Limit: 300 requests per IP per 5 minutes
   # General protection against API abuse
-  throttle('req/ip', limit: 300, period: 5.minutes) do |req|
-    req.ip unless req.path.start_with?('/assets')
+  throttle("req/ip", limit: 300, period: 5.minutes) do |req|
+    req.ip unless req.path.start_with?("/assets")
   end
 
   ### Custom Response ###
   #
   # Customize the response when rate limit is exceeded
   self.throttled_responder = lambda do |env|
-    retry_after = env['rack.attack.match_data'][:period]
+    match_data = env["rack.attack.match_data"] || {}
+    retry_after = match_data[:period] || 60
     [
       429, # HTTP 429 Too Many Requests
       {
-        'Content-Type' => 'application/json',
-        'Retry-After' => retry_after.to_s
+        "Content-Type" => "application/json",
+        "Retry-After" => retry_after.to_s
       },
-      [{
-        error: 'Rate limit exceeded',
-        message: 'Too many requests. Please try again later.',
+      [ {
+        error: "Rate limit exceeded",
+        message: "Too many requests. Please try again later.",
         retry_after: retry_after
-      }.to_json]
+      }.to_json ]
     ]
   end
 
   ### Blocklist & Safelist ###
 
+  # Safelist all requests in test environment
+  safelist("allow-test-env") do |req|
+    Rails.env.test?
+  end
+
   # Safelist localhost in development
-  safelist('allow-localhost') do |req|
-    Rails.env.development? && ['127.0.0.1', '::1'].include?(req.ip)
+  safelist("allow-localhost") do |req|
+    Rails.env.development? && [ "127.0.0.1", "::1" ].include?(req.ip)
   end
 
   # Example: Block specific IPs (uncomment and add IPs as needed)
@@ -134,17 +140,17 @@ class Rack::Attack
   # @param req [Rack::Request] The request object
   # @return [Integer, nil] The user ID or nil if not found
   def self.extract_user_id_from_token(req)
-    auth_header = req.get_header('HTTP_AUTHORIZATION')
+    auth_header = req.get_header("HTTP_AUTHORIZATION")
     return nil unless auth_header
 
-    token = auth_header.split(' ').last
+    token = auth_header.split(" ").last
     return nil unless token
 
     begin
       # Decode JWT token (matches JsonWebToken service)
-      secret_key = ENV.fetch('JWT_SECRET_KEY', Rails.application.credentials.secret_key_base)
-      decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256')
-      decoded[0]['user_id']
+      secret_key = ENV.fetch("JWT_SECRET_KEY", Rails.application.credentials.secret_key_base)
+      decoded = JWT.decode(token, secret_key, true, algorithm: "HS256")
+      decoded[0]["user_id"]
     rescue JWT::DecodeError, JWT::ExpiredSignature
       nil
     end
@@ -153,13 +159,13 @@ class Rack::Attack
   ### ActiveSupport Notifications ###
   #
   # Log throttled requests for monitoring
-  ActiveSupport::Notifications.subscribe('rack.attack') do |name, start, finish, request_id, payload|
+  ActiveSupport::Notifications.subscribe("rack.attack") do |name, start, finish, request_id, payload|
     req = payload[:request]
 
-    if [:throttle, :blocklist].include?(req.env['rack.attack.match_type'])
+    if [ :throttle, :blocklist ].include?(req.env["rack.attack.match_type"])
       Rails.logger.warn({
-        message: 'Rate limit exceeded',
-        discriminator: req.env['rack.attack.matched'],
+        message: "Rate limit exceeded",
+        discriminator: req.env["rack.attack.matched"],
         ip: req.ip,
         path: req.path,
         user_agent: req.user_agent,

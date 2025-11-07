@@ -70,7 +70,6 @@ export function EditPostDialog({
       );
       setAvailableTags(filteredTags);
     } catch (error) {
-      console.error("Failed to search tags:", error);
     } finally {
       setIsLoadingTags(false);
     }
@@ -146,14 +145,13 @@ export function EditPostDialog({
         title: title.trim(),
         description: description.trim(),
         picture: imageFile || undefined,
-        tag_ids: selectedTags.map((tag) => tag.id),
+        tags: selectedTags.map((tag) => tag.name),
       });
 
       toast.success("Post updated successfully!");
       onPostUpdated?.(updatedPost);
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Failed to update post:", error);
       const errorMessage =
         error.response?.data?.error || "Failed to update post";
       toast.error(errorMessage);

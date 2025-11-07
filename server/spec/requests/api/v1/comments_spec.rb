@@ -31,7 +31,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
           :created_at,
           :updated_at
         )
-        expect(comment[:user]).to include(:id, :name, :email, :profile_picture)
+        expect(comment[:user]).to include(:id, :name, :profile_picture)
         expect(comment[:commentable_type]).to eq('Post')
         expect(comment[:commentable_id]).to eq(post_record.id)
       end
@@ -402,6 +402,289 @@ RSpec.describe 'Api::V1::Comments', type: :request do
       comment3 = Comment.last
       expect(comment3.commentable).to eq(comment2)
       expect(comment3.root_post).to eq(post_record)
+    end
+  end
+
+  describe 'Mention Integration Tests' do
+    let(:mentioned_user1) { create_confirmed_user(name: 'alice', email: 'alice@example.com') }
+    let(:mentioned_user2) { create_confirmed_user(name: 'bob', email: 'bob@example.com') }
+    let(:mentioned_user3) { create_confirmed_user(name: 'charlie', email: 'charlie@example.com') }
+
+    describe 'POST /api/v1/posts/:post_id/comments with mentions' do
+      context 'when creating comment with username mentions' do
+        it 'creates mention notifications for mentioned users' do
+          mentioned_user1
+          mentioned_user2
+
+          comment_params = {
+            comment: {
+              description: 'Hey @alice and @bob, what do you think?'
+            }
+          }
+
+          expect {
+            post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(3) # 2 mentions + 1 comment_on_post
+
+          expect(response).to have_http_status(:created)
+
+          mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
+          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(mention_notifications.all? { |n| n.actor == user }).to be true
+          expect(mention_notifications.all? { |n| n.notifiable_type == 'Comment' }).to be true
+        end
+      end
+
+      context 'when creating comment with email mentions' do
+        it 'creates mention notifications for mentioned users' do
+          mentioned_user1
+
+          comment_params = {
+            comment: {
+              description: 'Thoughts @alice@example.com?'
+            }
+          }
+
+          expect {
+            post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(2) # 1 mention + 1 comment_on_post
+
+          mention_notification = Notification.where(notification_type: 'mention').last
+          expect(mention_notification.user).to eq(mentioned_user1)
+        end
+      end
+
+      context 'when mentioning post owner in comment' do
+        it 'creates mention notification in addition to comment_on_post notification' do
+          # post_owner should get 2 notifications: comment_on_post and mention
+          post_owner.update(name: 'postowner')
+
+          comment_params = {
+            comment: {
+              description: 'Hey @postowner check this comment'
+            }
+          }
+
+          expect {
+            post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(2)
+
+          notifications = Notification.where(user: post_owner).order(created_at: :desc).limit(2)
+          notification_types = notifications.map(&:notification_type)
+          expect(notification_types).to match_array(['comment_on_post', 'mention'])
+        end
+      end
+
+      context 'when mentioning self in comment' do
+        it 'does not create mention notification for comment author' do
+          user.update(name: 'testuser')
+
+          comment_params = {
+            comment: {
+              description: 'I am @testuser'
+            }
+          }
+
+          # Only comment_on_post notification for post owner, no self-mention
+          expect {
+            post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          notification = Notification.last
+          expect(notification.notification_type).to eq('comment_on_post')
+        end
+      end
+
+      context 'when mentioning multiple users in comment' do
+        it 'creates separate notifications for each mentioned user' do
+          mentioned_user1
+          mentioned_user2
+          mentioned_user3
+
+          comment_params = {
+            comment: {
+              description: '@alice, @bob, and @charlie please see this comment'
+            }
+          }
+
+          expect {
+            post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(4) # 3 mentions + 1 comment_on_post
+
+          mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(3)
+          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+        end
+      end
+    end
+
+    describe 'POST /api/v1/comments/:comment_id/comments (replies) with mentions' do
+      let(:parent_comment) { create(:comment, commentable: post_record, user: other_user, description: 'Parent comment') }
+
+      context 'when creating reply with mentions' do
+        it 'creates mention notifications for mentioned users' do
+          mentioned_user1
+          mentioned_user2
+
+          reply_params = {
+            comment: {
+              description: 'Replying to mention @alice and @bob'
+            }
+          }
+
+          expect {
+            post "/api/v1/comments/#{parent_comment.id}/comments", params: reply_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(3) # 2 mentions + 1 reply_to_comment
+
+          mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
+          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+        end
+      end
+
+      context 'when mentioning parent comment author in reply' do
+        it 'creates both mention and reply_to_comment notifications' do
+          other_user.update(name: 'othername')
+
+          reply_params = {
+            comment: {
+              description: 'Hey @othername great point!'
+            }
+          }
+
+          expect {
+            post "/api/v1/comments/#{parent_comment.id}/comments", params: reply_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(2) # 1 mention + 1 reply_to_comment
+
+          notifications = Notification.where(user: other_user).order(created_at: :desc).limit(2)
+          notification_types = notifications.map(&:notification_type)
+          expect(notification_types).to match_array(['reply_to_comment', 'mention'])
+        end
+      end
+    end
+
+    describe 'PUT /api/v1/comments/:id with mentions' do
+      let(:existing_comment) do
+        create(:comment, user: user, commentable: post_record, description: 'Original comment')
+      end
+
+      context 'when updating comment to add mentions' do
+        it 'creates new mention notifications' do
+          mentioned_user1
+          existing_comment
+
+          update_params = {
+            comment: {
+              description: 'Updated to mention @alice'
+            }
+          }
+
+          expect {
+            put "/api/v1/comments/#{existing_comment.id}", params: update_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          notification = Notification.where(notification_type: 'mention').last
+          expect(notification.user).to eq(mentioned_user1)
+          expect(notification.notifiable).to eq(existing_comment)
+        end
+      end
+
+      context 'when updating comment with existing mentions' do
+        it 'does not create duplicate notifications' do
+          mentioned_user1
+          comment_with_mention = create(:comment,
+            user: user,
+            commentable: post_record,
+            description: 'Hey @alice'
+          )
+
+          # First mention creates notification
+          MentionService.process_mentions(comment_with_mention, user)
+
+          # Update should not create duplicate
+          update_params = {
+            comment: {
+              description: 'Still mentioning @alice'
+            }
+          }
+
+          expect {
+            put "/api/v1/comments/#{comment_with_mention.id}", params: update_params, headers: auth_headers(user)
+          }.not_to change(Notification, :count)
+        end
+      end
+
+      context 'when adding new mentions to comment with existing mentions' do
+        it 'creates notifications only for newly mentioned users' do
+          mentioned_user1
+          mentioned_user2
+
+          comment_with_mention = create(:comment,
+            user: user,
+            commentable: post_record,
+            description: 'Hey @alice'
+          )
+
+          # First mention
+          MentionService.process_mentions(comment_with_mention, user)
+
+          # Add new mention
+          update_params = {
+            comment: {
+              description: 'Hey @alice and now also @bob'
+            }
+          }
+
+          expect {
+            put "/api/v1/comments/#{comment_with_mention.id}", params: update_params, headers: auth_headers(user)
+          }.to change(Notification, :count).by(1)
+
+          new_notification = Notification.where(notification_type: 'mention').last
+          expect(new_notification.user).to eq(mentioned_user2)
+        end
+      end
+    end
+
+    describe 'End-to-end mention workflow' do
+      it 'handles complete workflow: post with mention -> comment with mention -> reply with mention' do
+        mentioned_user1
+        mentioned_user2
+        mentioned_user3
+
+        # Create post with mention
+        post_params = {
+          post: {
+            title: 'Discussion',
+            description: 'Hey @alice what do you think?',
+            tag_ids: []
+          }
+        }
+
+        post '/api/v1/posts', params: post_params, headers: auth_headers(user)
+        created_post = Post.last
+
+        # Add comment with different mention
+        comment_params = {
+          comment: {
+            description: '@bob has thoughts on this'
+          }
+        }
+
+        post "/api/v1/posts/#{created_post.id}/comments", params: comment_params, headers: auth_headers(mentioned_user1)
+        created_comment = Comment.last
+
+        # Add reply with another mention
+        reply_params = {
+          comment: {
+            description: '@charlie should also see this'
+          }
+        }
+
+        post "/api/v1/comments/#{created_comment.id}/comments", params: reply_params, headers: auth_headers(mentioned_user2)
+
+        # Verify all mention notifications were created
+        mention_notifications = Notification.where(notification_type: 'mention')
+        mentioned_users = mention_notifications.map(&:user).uniq
+        expect(mentioned_users).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+      end
     end
   end
 end

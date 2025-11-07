@@ -64,7 +64,6 @@ export function PasswordChangeForm() {
       reset();
       toast.success('Password changed successfully!');
     } catch (error: any) {
-      console.error('Failed to change password:', error);
 
       // Handle specific error messages
       const errorMessage =

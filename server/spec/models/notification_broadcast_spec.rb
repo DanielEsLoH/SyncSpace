@@ -57,18 +57,22 @@ RSpec.describe 'Notification Broadcasting', type: :model do
 
     it 'includes notifiable information' do
       notification = nil
+      reaction = create(:reaction, reactionable: post_record, user: actor, reaction_type: 'like')
 
       expect {
         notification = Notification.create(
           user: user,
           actor: actor,
-          notifiable: post_record,
+          notifiable: reaction,
           notification_type: 'reaction_on_post'
         )
       }.to have_broadcasted_to(user).from_channel(NotificationsChannel).with { |data|
         expect(data[:notification][:notifiable]).to include(
-          id: post_record.id,
-          type: 'Post'
+          id: reaction.id,
+          type: 'Reaction',
+          reaction_type: 'like',
+          reactionable_type: 'Post',
+          reactionable_id: post_record.id
         )
       }
     end

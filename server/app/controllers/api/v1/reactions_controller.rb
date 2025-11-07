@@ -8,7 +8,7 @@ module Api
       # Body: { reaction_type: 'like' | 'love' | 'dislike' }
       def toggle
         unless Reaction::REACTION_TYPES.include?(params[:reaction_type])
-          return render json: { error: 'Invalid reaction type' }, status: :unprocessable_entity
+          return render json: { error: "Invalid reaction type" }, status: :unprocessable_entity
         end
 
         result = Reaction.toggle(
@@ -18,17 +18,30 @@ module Api
         )
 
         # Create notification if reaction was added or changed (not removed)
-        if ['added', 'changed'].include?(result[:action]) && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
+        if [ "added", "changed" ].include?(result[:action]) && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
           create_notification_for_reaction(result[:reaction])
         end
 
         # Broadcast reaction update to relevant channels
         broadcast_reaction_update(result[:action])
 
+        # Build user_reaction response
+        user_reaction_data = if result[:reaction]
+          {
+            id: result[:reaction].id,
+            reaction_type: result[:reaction].reaction_type,
+            user_id: result[:reaction].user_id,
+            created_at: result[:reaction].created_at
+          }
+        else
+          nil
+        end
+
         render json: {
           action: result[:action],
           message: "Reaction #{result[:action]}",
-          reactions_count: @reactionable.reactions.count
+          reactions_count: @reactionable.reactions.count,
+          user_reaction: user_reaction_data
         }, status: :ok
       end
 
@@ -39,9 +52,9 @@ module Api
 
         render json: {
           reactions: {
-            like: reactions['like']&.count || 0,
-            love: reactions['love']&.count || 0,
-            dislike: reactions['dislike']&.count || 0
+            like: reactions["like"]&.count || 0,
+            love: reactions["love"]&.count || 0,
+            dislike: reactions["dislike"]&.count || 0
           },
           user_reactions: @reactionable.reactions.where(user: current_user).pluck(:reaction_type)
         }, status: :ok
@@ -56,11 +69,11 @@ module Api
           @reactionable = Comment.find(params[:comment_id])
         end
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Reactionable not found' }, status: :not_found
+        render json: { error: "Reactionable not found" }, status: :not_found
       end
 
       def create_notification_for_reaction(reaction)
-        notification_type = reaction.reactionable_type == 'Post' ? 'reaction_on_post' : 'reaction_on_comment'
+        notification_type = reaction.reactionable_type == "Post" ? "reaction_on_post" : "reaction_on_comment"
 
         Notification.create(
           user: @reactionable.user,
@@ -76,12 +89,55 @@ module Api
           # Reload associations to get fresh data
           @reactionable.reload
 
-          ActionCable.server.broadcast('posts_channel', {
-            action: 'reaction_update',
-            post: post_response(@reactionable),
+          # Use user-agnostic response for broadcasts
+          ActionCable.server.broadcast("posts_channel", {
+            action: "reaction_update",
+            post: post_broadcast_response(@reactionable),
             reaction_action: action
           })
         end
+      end
+
+      # User-agnostic post response for broadcasts (excludes user_reaction)
+      def post_broadcast_response(post)
+        # Get last 3 comments for preview
+        last_three_comments = post.comments
+          .where(commentable_type: "Post")
+          .order(created_at: :desc)
+          .limit(3)
+          .includes(:user)
+          .map do |comment|
+            {
+              id: comment.id,
+              description: comment.description,
+              user: {
+                id: comment.user.id,
+                name: comment.user.name,
+                profile_picture: comment.user.profile_picture
+              },
+              created_at: comment.created_at
+            }
+          end
+
+        {
+          id: post.id,
+          title: post.title,
+          description: post.description,
+          picture: post.picture,
+          user: {
+            id: post.user.id,
+            name: post.user.name,
+            email: post.user.email,
+            profile_picture: post.user.profile_picture
+          },
+          tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
+          reactions_count: post.reactions.count,
+          comments_count: post.try(:comments_count) || post.comments.count,
+          last_three_comments: last_three_comments,
+          # IMPORTANT: Don't include user_reaction in broadcasts - it's user-specific
+          created_at: post.created_at,
+          updated_at: post.updated_at
+        }
       end
 
       def post_response(post)
@@ -94,7 +150,7 @@ module Api
 
         # Get last 3 comments for preview
         last_three_comments = post.comments
-          .where(commentable_type: 'Post')
+          .where(commentable_type: "Post")
           .order(created_at: :desc)
           .limit(3)
           .includes(:user)

@@ -8,12 +8,12 @@ module Api
                                     .order(created_at: :desc)
 
         # Filter by read/unread
-        notifications = notifications.unread if params[:unread] == 'true'
-        notifications = notifications.read if params[:read] == 'true'
+        notifications = notifications.unread if params[:unread] == "true"
+        notifications = notifications.read if params[:read] == "true"
 
         # Pagination
         page = params[:page]&.to_i || 1
-        per_page = [params[:per_page]&.to_i || 20, 100].min
+        per_page = [ params[:per_page]&.to_i || 20, 100 ].min
 
         total_count = notifications.count
         notifications = notifications.offset((page - 1) * per_page).limit(per_page)
@@ -36,11 +36,11 @@ module Api
         notification.mark_as_read!
 
         render json: {
-          message: 'Notification marked as read',
+          message: "Notification marked as read",
           notification: notification_response(notification)
         }, status: :ok
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Notification not found' }, status: :not_found
+        render json: { error: "Notification not found" }, status: :not_found
       end
 
       # PUT /api/v1/notifications/mark_all_read
@@ -48,8 +48,17 @@ module Api
         Notification.mark_all_as_read(current_user)
 
         render json: {
-          message: 'All notifications marked as read',
+          message: "All notifications marked as read",
           unread_count: 0
+        }, status: :ok
+      end
+
+      # GET /api/v1/notifications/unread_count
+      def unread_count
+        count = current_user.notifications.unread.count
+
+        render json: {
+          count: count
         }, status: :ok
       end
 
@@ -66,7 +75,7 @@ module Api
         else
           {
             id: nil,
-            name: 'Deleted User',
+            name: "Deleted User",
             profile_picture: nil
           }
         end
@@ -86,21 +95,21 @@ module Api
         return nil if notification.notifiable.nil?
 
         case notification.notifiable_type
-        when 'Comment'
+        when "Comment"
           comment = notification.notifiable
           # Additional safety check for associated post
           return nil if comment.root_post.nil?
 
           {
-            type: 'Comment',
+            type: "Comment",
             id: comment.id,
             description: comment.description[0..100],
             post_id: comment.root_post.id
           }
-        when 'Reaction'
+        when "Reaction"
           reaction = notification.notifiable
           {
-            type: 'Reaction',
+            type: "Reaction",
             id: reaction.id,
             reaction_type: reaction.reaction_type,
             reactionable_type: reaction.reactionable_type,

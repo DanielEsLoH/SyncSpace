@@ -106,8 +106,8 @@ class User < ApplicationRecord
   end
 
   def set_default_preferences
-    self.theme ||= 'system'
-    self.language ||= 'en'
+    self.theme ||= "system"
+    self.language ||= "en"
     save if changed?
   end
 end

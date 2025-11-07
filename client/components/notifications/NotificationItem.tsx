@@ -1,6 +1,6 @@
 'use client';
 
-import { Notification, isCommentNotifiable, isReactionNotifiable } from '@/types';
+import { Notification, isCommentNotifiable, isReactionNotifiable, isPostNotifiable } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { MessageCircle, Heart, AtSign, Bell } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -89,6 +89,9 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
       // For reactions on comments, we need to navigate to the post
       // This would require additional data, so for now navigate to feed
       return '/feed';
+    } else if (isPostNotifiable(notifiable)) {
+      // Navigate to the post (for mentions in posts)
+      return `/posts/${notifiable.id}`;
     }
 
     return '/feed';

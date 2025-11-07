@@ -1,9 +1,9 @@
 import { Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { NotificationsList } from '@/components/notifications/NotificationsList';
+import { NotificationsPageHeader } from '@/components/notifications/NotificationsPageHeader';
 import { getCachedNotifications, getAuthToken } from '@/lib/api-server';
 import { requireAuth } from '@/lib/server-auth';
-import { Bell } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { NotificationsSkeleton } from '@/components/notifications/NotificationsSkeleton';
 import type { NotificationsResponse } from '@/types';
@@ -56,7 +56,6 @@ export default async function NotificationsPage() {
   try {
     notificationsData = await getCachedNotifications(auth.user.id, 1, token);
   } catch (error) {
-    console.error('Failed to fetch notifications:', error);
     // Return empty state - client component will show error UI
     notificationsData = {
       notifications: [],
@@ -77,17 +76,7 @@ export default async function NotificationsPage() {
         <div className="max-w-3xl mx-auto">
           <Card>
             <CardHeader className="pb-6">
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Bell className="h-6 w-6" />
-                Notifications
-                {notificationsData.unread_count > 0 && (
-                  <span className="ml-2 px-2 py-1 text-xs bg-primary text-primary-foreground rounded-full">
-                    {notificationsData.unread_count > 99
-                      ? '99+'
-                      : notificationsData.unread_count}
-                  </span>
-                )}
-              </CardTitle>
+              <NotificationsPageHeader />
             </CardHeader>
 
             <CardContent>
@@ -98,12 +87,10 @@ export default async function NotificationsPage() {
                 - Handles filtering, grouping, and pagination
                 - Provides optimistic UI updates
               */}
-              <Suspense fallback={<NotificationsSkeleton />}>
-                <NotificationsList
-                  initialData={notificationsData}
-                  userId={auth.user.id}
-                />
-              </Suspense>
+              <NotificationsList
+                initialData={notificationsData}
+                userId={auth.user.id}
+              />
             </CardContent>
           </Card>
         </div>

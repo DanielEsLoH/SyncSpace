@@ -11,12 +11,12 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'sends to the user email address' do
-        expect(mail.to).to eq([user.email])
+        expect(mail.to).to eq([ user.email ])
       end
 
       it 'sends from the configured sender email' do
         expected_from = ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com')
-        expect(mail.from).to eq([expected_from])
+        expect(mail.from).to eq([ expected_from ])
       end
 
       it 'has the correct content type' do
@@ -166,12 +166,12 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'sends to the user email address' do
-        expect(mail.to).to eq([user.email])
+        expect(mail.to).to eq([ user.email ])
       end
 
       it 'sends from the configured sender email' do
         expected_from = ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com')
-        expect(mail.from).to eq([expected_from])
+        expect(mail.from).to eq([ expected_from ])
       end
 
       it 'has the correct content type' do

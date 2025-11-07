@@ -26,7 +26,6 @@ export default function TagPostsPage() {
         const tagData = await tagsService.getTag(tagId);
         setTag(tagData);
       } catch (err: any) {
-        console.error('Failed to fetch tag:', err);
         setError(err.response?.data?.error || 'Failed to load tag details');
         toast.error('Failed to load tag details');
       } finally {
@@ -62,7 +61,6 @@ export default function TagPostsPage() {
                   const tagData = await tagsService.getTag(tagId);
                   setTag(tagData);
                 } catch (err: any) {
-                  console.error('Failed to fetch tag:', err);
                   setError(err.response?.data?.error || 'Failed to load tag details');
                   toast.error('Failed to load tag details');
                 } finally {

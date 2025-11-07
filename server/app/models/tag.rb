@@ -11,7 +11,7 @@ class Tag < ApplicationRecord
   before_validation :set_default_color, on: :create
 
   # Scopes
-  scope :popular, -> { joins(:posts).group('tags.id').order('COUNT(posts.id) DESC') }
+  scope :popular, -> { joins(:posts).group("tags.id").order("COUNT(posts.id) DESC") }
   scope :alphabetical, -> { order(:name) }
 
   private

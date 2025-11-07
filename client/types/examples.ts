@@ -204,11 +204,11 @@ const notification: Notification = {
 
 // Using type guards with notifications
 if (isCommentNotifiable(notification.notifiable)) {
-  console.log('Comment on post:', notification.notifiable.post_id);
+  // Comment on post: notification.notifiable.post_id
 }
 
 if (isReactionNotifiable(notification.notifiable)) {
-  console.log('Reaction type:', notification.notifiable.reaction_type);
+  // Reaction type: notification.notifiable.reaction_type
 }
 
 // ============================================================================

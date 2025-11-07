@@ -223,7 +223,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       it 'marks notification as read and returns 200' do
         expect(notification.read?).to be false
 
-        put "/api/v1/notifications/#{notification.id}/mark_read", headers: auth_headers(user)
+        patch "/api/v1/notifications/#{notification.id}/read", headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:message]).to eq('Notification marked as read')
@@ -235,7 +235,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
 
       it 'updates read_at timestamp' do
         freeze_time do
-          put "/api/v1/notifications/#{notification.id}/mark_read", headers: auth_headers(user)
+          patch "/api/v1/notifications/#{notification.id}/read", headers: auth_headers(user)
 
           notification.reload
           expect(notification.read_at).to be_within(1.second).of(Time.current)
@@ -245,7 +245,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       it 'is idempotent (marking already read notification)' do
         notification.update(read_at: 1.hour.ago)
 
-        put "/api/v1/notifications/#{notification.id}/mark_read", headers: auth_headers(user)
+        patch "/api/v1/notifications/#{notification.id}/read", headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
       end
@@ -253,7 +253,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
 
     context 'without authentication' do
       it 'returns 401 unauthorized' do
-        put "/api/v1/notifications/#{notification.id}/mark_read"
+        patch "/api/v1/notifications/#{notification.id}/read"
 
         expect(response).to have_http_status(:unauthorized)
       end
@@ -267,7 +267,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
                                      notifiable: comment,
                                      notification_type: 'comment_on_post')
 
-        put "/api/v1/notifications/#{other_notification.id}/mark_read", headers: auth_headers(user)
+        patch "/api/v1/notifications/#{other_notification.id}/read", headers: auth_headers(user)
 
         expect(response).to have_http_status(:not_found)
         expect(json_response[:error]).to eq('Notification not found')
@@ -279,7 +279,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
 
     context 'with non-existent notification' do
       it 'returns 404 not found' do
-        put '/api/v1/notifications/99999/mark_read', headers: auth_headers(user)
+        patch '/api/v1/notifications/99999/read', headers: auth_headers(user)
 
         expect(response).to have_http_status(:not_found)
         expect(json_response[:error]).to eq('Notification not found')
@@ -311,7 +311,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       it 'marks all unread notifications as read and returns 200' do
         expect(user.notifications.unread.count).to eq(5)
 
-        put '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
+        patch '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:message]).to eq('All notifications marked as read')
@@ -322,7 +322,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       end
 
       it 'updates read_at timestamp for all unread notifications' do
-        put '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
+        patch '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
 
         user.notifications.each do |notification|
           notification.reload
@@ -338,7 +338,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
                                      notification_type: 'comment_on_post',
                                      read_at: nil)
 
-        put '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
+        patch '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
 
@@ -349,7 +349,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       it 'works when user has no unread notifications' do
         user.notifications.update_all(read_at: Time.current)
 
-        put '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
+        patch '/api/v1/notifications/mark_all_read', headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:unread_count]).to eq(0)
@@ -358,7 +358,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
       it 'works when user has no notifications at all' do
         new_user = create_confirmed_user
 
-        put '/api/v1/notifications/mark_all_read', headers: auth_headers(new_user)
+        patch '/api/v1/notifications/mark_all_read', headers: auth_headers(new_user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:unread_count]).to eq(0)
@@ -367,7 +367,7 @@ RSpec.describe 'Api::V1::Notifications', type: :request do
 
     context 'without authentication' do
       it 'returns 401 unauthorized' do
-        put '/api/v1/notifications/mark_all_read'
+        patch '/api/v1/notifications/mark_all_read'
 
         expect(response).to have_http_status(:unauthorized)
       end

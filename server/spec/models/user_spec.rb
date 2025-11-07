@@ -32,7 +32,7 @@ RSpec.describe User, type: :model do
 
     context 'email format validation' do
       it 'accepts valid email formats' do
-        valid_emails = ['user@example.com', 'test.user@example.co.uk', 'user+tag@example.com']
+        valid_emails = [ 'user@example.com', 'test.user@example.co.uk', 'user+tag@example.com' ]
         valid_emails.each do |email|
           user = build(:user, email: email, password: 'password123')
           expect(user).to be_valid
@@ -40,7 +40,7 @@ RSpec.describe User, type: :model do
       end
 
       it 'rejects invalid email formats' do
-        invalid_emails = ['invalid', 'invalid@', '@example.com', 'invalid@.com']
+        invalid_emails = [ 'invalid', 'invalid@', '@example.com', 'invalid@.com' ]
         invalid_emails.each do |email|
           user = build(:user, email: email, password: 'password123')
           expect(user).not_to be_valid

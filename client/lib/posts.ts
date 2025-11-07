@@ -30,9 +30,9 @@ export const postsService = {
       formData.append('post[picture]', data.picture);
     }
 
-    if (data.tag_ids && data.tag_ids.length > 0) {
-      data.tag_ids.forEach((tagId) => {
-        formData.append('post[tag_ids][]', tagId.toString());
+    if (data.tags && data.tags.length > 0) {
+      data.tags.forEach((tagName) => {
+        formData.append('tags[]', tagName);
       });
     }
 
@@ -52,9 +52,9 @@ export const postsService = {
     if (data.description) formData.append('post[description]', data.description);
     if (data.picture) formData.append('post[picture]', data.picture);
 
-    if (data.tag_ids) {
-      data.tag_ids.forEach((tagId) => {
-        formData.append('post[tag_ids][]', tagId.toString());
+    if (data.tags) {
+      data.tags.forEach((tagName) => {
+        formData.append('tags[]', tagName);
       });
     }
 

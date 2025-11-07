@@ -45,5 +45,5 @@ Rails.application.configure do
 
   # Action Mailer configuration for test environment
   config.action_mailer.delivery_method = :test
-  config.action_mailer.default_url_options = { host: 'test.host' }
+  config.action_mailer.default_url_options = { host: "test.host" }
 end

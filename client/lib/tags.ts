@@ -4,16 +4,16 @@ import { Tag } from '@/types';
 export const tagsService = {
   // Get all tags
   async getTags(search?: string): Promise<Tag[]> {
-    const response = await api.get<Tag[]>('/tags', {
+    const response = await api.get<{ tags: Tag[] }>('/tags', {
       params: search ? { search } : undefined,
     });
-    return response.data;
+    return response.data.tags;
   },
 
   // Get a single tag
   async getTag(id: number): Promise<Tag> {
-    const response = await api.get<Tag>(`/tags/${id}`);
-    return response.data;
+    const response = await api.get<{ tag: Tag }>(`/tags/${id}`);
+    return response.data.tag;
   },
 
   // Create a new tag
@@ -35,10 +35,11 @@ export const tagsService = {
 
   // Get popular tags
   async getPopularTags(limit: number = 10): Promise<Tag[]> {
-    const response = await api.get<Tag[]>('/tags/popular', {
-      params: { limit },
+    const response = await api.get<{ tags: Tag[] }>('/tags', {
+      params: { sort: 'popular' },
     });
-    return response.data;
+    // Limit results on the frontend since backend doesn't support limit parameter
+    return response.data.tags.slice(0, limit);
   },
 };
 

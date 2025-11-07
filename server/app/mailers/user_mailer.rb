@@ -1,5 +1,5 @@
 class UserMailer < ApplicationMailer
-  default from: ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com')
+  default from: ENV.fetch("BREVO_FROM_EMAIL", "no-reply@syncspace.com")
 
   def confirmation_email(user)
     @user = user
@@ -7,7 +7,7 @@ class UserMailer < ApplicationMailer
 
     mail(
       to: user.email,
-      subject: 'Welcome to SyncSpace! Please confirm your email'
+      subject: "Welcome to SyncSpace! Please confirm your email"
     )
   end
 
@@ -17,7 +17,7 @@ class UserMailer < ApplicationMailer
 
     mail(
       to: user.email,
-      subject: 'SyncSpace - Reset Your Password'
+      subject: "SyncSpace - Reset Your Password"
     )
   end
 end

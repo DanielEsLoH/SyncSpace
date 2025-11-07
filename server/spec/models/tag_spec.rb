@@ -70,7 +70,7 @@ RSpec.describe Tag, type: :model do
 
     context 'color format validation' do
       it 'accepts valid hex colors' do
-        valid_colors = ['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#AbCdEf']
+        valid_colors = [ '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#AbCdEf' ]
         valid_colors.each do |color|
           tag = build(:tag, name: "tag_#{rand(10000)}", color: color)
           expect(tag).to be_valid
@@ -78,7 +78,7 @@ RSpec.describe Tag, type: :model do
       end
 
       it 'rejects invalid color formats' do
-        invalid_colors = ['#FFF', '#GGGGGG', 'FF0000', '#12345', '#1234567', 'red', '']
+        invalid_colors = [ '#FFF', '#GGGGGG', 'FF0000', '#12345', '#1234567', 'red', '' ]
         invalid_colors.each do |color|
           tag = build(:tag, name: "tag_#{rand(10000)}", color: color)
           expect(tag).not_to be_valid
@@ -302,7 +302,7 @@ RSpec.describe Tag, type: :model do
       tag3 = create(:tag, name: 'rspec', color: '#0000FF')
       post = create(:post, user: user, title: 'Test', description: 'Test Description')
 
-      post.tags << [tag1, tag2, tag3]
+      post.tags << [ tag1, tag2, tag3 ]
 
       expect(post.tags.count).to eq(3)
       expect(post.tags).to include(tag1, tag2, tag3)

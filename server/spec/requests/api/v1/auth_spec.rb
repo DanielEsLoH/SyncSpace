@@ -42,7 +42,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
           'UserMailer',
           'confirmation_email',
           'deliver_now',
-          hash_including(args: [an_instance_of(User)])
+          hash_including(args: [ an_instance_of(User) ])
         )
       end
 
