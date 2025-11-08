@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from 'next-themes';
 
@@ -9,12 +10,14 @@ jest.mock('next-themes', () => ({
 
 describe('ThemeToggle', () => {
   const mockSetTheme = jest.fn();
+  let user;
 
   beforeEach(() => {
     (useTheme as jest.Mock).mockReturnValue({
       setTheme: mockSetTheme,
       theme: 'light',
     });
+    user = userEvent.setup();
   });
 
   afterEach(() => {
@@ -33,46 +36,46 @@ describe('ThemeToggle', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it('opens dropdown menu when clicked', () => {
+  it('opens dropdown menu when clicked', async () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     // The dropdown items should appear
-    expect(screen.getByText(/light/i)).toBeInTheDocument();
-    expect(screen.getByText(/dark/i)).toBeInTheDocument();
-    expect(screen.getByText(/system/i)).toBeInTheDocument();
+    expect(await screen.findByText(/light/i)).toBeInTheDocument();
+    expect(await screen.findByText(/dark/i)).toBeInTheDocument();
+    expect(await screen.findByText(/system/i)).toBeInTheDocument();
   });
 
-  it('calls setTheme with correct value when light is selected', () => {
+  it('calls setTheme with correct value when light is selected', async () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
-    const lightOption = screen.getByText(/light/i);
-    fireEvent.click(lightOption);
+    const lightOption = await screen.findByText(/light/i);
+    await user.click(lightOption);
 
     expect(mockSetTheme).toHaveBeenCalledWith('light');
   });
 
-  it('calls setTheme with correct value when dark is selected', () => {
+  it('calls setTheme with correct value when dark is selected', async () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
-    const darkOption = screen.getByText(/dark/i);
-    fireEvent.click(darkOption);
+    const darkOption = await screen.findByText(/dark/i);
+    await user.click(darkOption);
 
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
   });
 
-  it('calls setTheme with correct value when system is selected', () => {
+  it('calls setTheme with correct value when system is selected', async () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
-    const systemOption = screen.getByText(/system/i);
-    fireEvent.click(systemOption);
+    const systemOption = await screen.findByText(/system/i);
+    await user.click(systemOption);
 
     expect(mockSetTheme).toHaveBeenCalledWith('system');
   });

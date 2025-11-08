@@ -72,7 +72,7 @@ module Api
           user: {
             id: post.user.id,
             name: post.user.name,
-            profile_picture: post.user.profile_picture
+            profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
           reactions_count: post.reactions.size,

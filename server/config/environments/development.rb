@@ -63,6 +63,10 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.default_url_options = { host: ENV.fetch("CLIENT_URL", "http://localhost:3000") }
 
+  # Configure default URL options for routes (needed for Active Storage)
+  config.action_controller.default_url_options = { host: ENV.fetch("API_URL", "http://localhost:3001") }
+  Rails.application.routes.default_url_options = { host: ENV.fetch("API_URL", "http://localhost:3001") }
+
   # ActionCable configuration
   config.action_cable.disable_request_forgery_protection = true
   config.action_cable.allowed_request_origins = [

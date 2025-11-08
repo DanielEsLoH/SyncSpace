@@ -9,7 +9,7 @@ export default function UserProfilePage() {
   const userId = parseInt(id as string);
 
   return (
-    <UserProfileWrapper initialPosts={[]}>
+    <UserProfileWrapper initialPosts={[]} userId={userId}>
       <UserProfileInitializer userId={userId} />
     </UserProfileWrapper>
   );

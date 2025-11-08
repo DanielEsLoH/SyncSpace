@@ -15,6 +15,7 @@ RUN apt-get update -qq && \
     git \
     libpq-dev \
     libvips \
+    libvips-tools \
     libyaml-dev \
     pkg-config \
     postgresql-client && \

@@ -57,58 +57,47 @@ export function PostFeed({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [page, setPage] = useState(initialPage);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchMorePosts = useCallback(async (pageNum: number) => {
+  const observer = useRef<IntersectionObserver>();
+  const loadMoreRef = useCallback(node => {
     if (isLoadingMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const response = await postsService.getPosts({
-        page: pageNum,
-        per_page: 10,
-      });
-
-      addPosts(response.posts);
-
-      if (response.meta) {
-        setHasMore(response.meta.current_page < response.meta.total_pages);
-      } else {
-        setHasMore(false);
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
       }
-    } catch (err: any) {
-      toast.error('Failed to load more posts');
-    }
-    finally {
-      setIsLoadingMore(false);
-    }
-  }, [isLoadingMore, addPosts]);
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoadingMore, hasMore]);
 
   useEffect(() => {
-    if (isLoadingMore || !hasMore) return;
+    if (page <= initialPage) return;
 
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          fetchMorePosts(nextPage);
+    const fetchMorePosts = async () => {
+      setIsLoadingMore(true);
+      try {
+        const response = await postsService.getPosts({
+          page: page,
+          per_page: 10,
+        });
+
+        addPosts(response.posts);
+
+        if (response.meta) {
+          setHasMore(response.meta.current_page < response.meta.total_pages);
+        } else {
+          setHasMore(false);
         }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
+      } catch (err: any) {
+        toast.error('Failed to load more posts');
+      }
+      finally {
+        setIsLoadingMore(false);
       }
     };
-  }, [isLoadingMore, hasMore, page, fetchMorePosts]);
+
+    fetchMorePosts();
+  }, [page, initialPage, addPosts]);
 
   const uniquePosts = useMemo(() => {
     const postMap = new Map();

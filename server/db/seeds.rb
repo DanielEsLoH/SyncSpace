@@ -109,8 +109,8 @@ posts.each do |post|
     user = users.sample
     reaction_type = [ 'like', 'love', 'dislike' ].sample
 
-    # Avoid duplicate reactions
-    unless Reaction.exists?(user: user, reactionable: post, reaction_type: reaction_type)
+    # Avoid duplicate reactions (one reaction per user per post)
+    unless Reaction.exists?(user: user, reactionable: post)
       Reaction.create!(
         user: user,
         reactionable: post,
@@ -128,7 +128,7 @@ comments.each do |comment|
       user = users.sample
       reaction_type = [ 'like', 'love' ].sample # Comments mostly get positive reactions
 
-      unless Reaction.exists?(user: user, reactionable: comment, reaction_type: reaction_type)
+      unless Reaction.exists?(user: user, reactionable: comment)
         Reaction.create!(
           user: user,
           reactionable: comment,

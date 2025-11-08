@@ -168,14 +168,23 @@ export function PostContent({ post, isOwner }: PostContentProps) {
         {/* Post Image */}
         {isValidImageUrl(post.picture) && (
           <div className="relative w-full h-64 md:h-96 rounded-lg overflow-hidden bg-muted">
-            <Image
-              src={post.picture}
-              alt={post.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 768px"
-              priority
-            />
+            {post.picture.includes('localhost') ? (
+              // Use regular img for localhost to bypass Next.js private IP restrictions
+              <img
+                src={post.picture}
+                alt={post.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Image
+                src={post.picture}
+                alt={post.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority
+              />
+            )}
           </div>
         )}
 

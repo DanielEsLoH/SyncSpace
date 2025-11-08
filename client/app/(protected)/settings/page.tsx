@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Settings, User, Globe, Palette, Save } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Settings, User, Globe, Palette, Save, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -22,8 +23,10 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
-    profile_picture: '',
   });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -38,8 +41,8 @@ export default function SettingsPage() {
       setFormData({
         name: user.name || '',
         bio: user.bio || '',
-        profile_picture: user.profile_picture || '',
       });
+      setAvatarPreview(user.profile_picture || null);
     }
   }, [user]);
 
@@ -53,19 +56,77 @@ export default function SettingsPage() {
     });
   };
 
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle clicking upload button
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle removing avatar
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(user?.profile_picture || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Handle profile update
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await api.put('/users/profile', {
-        user: formData,
+      const submitData = new FormData();
+      submitData.append('user[name]', formData.name);
+      submitData.append('user[bio]', formData.bio);
+
+      if (avatarFile) {
+        submitData.append('user[avatar]', avatarFile);
+      }
+
+      await api.put('/users/profile', submitData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
+
       await refreshUser();
+      setAvatarFile(null);
       toast.success('Profile updated successfully!');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to update profile');
+      const errorMessage = error.response?.data?.errors?.join(', ') ||
+                          error.response?.data?.error ||
+                          'Failed to update profile';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +159,74 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Avatar Upload Section */}
+                <div className="space-y-4">
+                  <Label>Profile Picture</Label>
+                  <div className="flex items-center gap-6">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={avatarPreview || undefined} alt={user.name} />
+                      <AvatarFallback className="text-2xl">
+                        {user.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleUploadClick}
+                          disabled={isLoading}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Upload Photo
+                        </Button>
+                        {avatarFile && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveAvatar}
+                            disabled={isLoading}
+                            className="gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Recommended: Square image, at least 200x200px. Max 5MB.
+                        <br />
+                        Accepted formats: JPG, PNG, GIF, WebP
+                      </p>
+                      {avatarFile && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          New photo selected: {avatarFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <Separator />
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input
@@ -123,19 +251,6 @@ export default function SettingsPage() {
                     onChange={handleChange}
                     disabled={isLoading}
                     rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="profile_picture">Profile Picture URL</Label>
-                  <Input
-                    id="profile_picture"
-                    name="profile_picture"
-                    type="url"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={formData.profile_picture}
-                    onChange={handleChange}
-                    disabled={isLoading}
                   />
                 </div>
 

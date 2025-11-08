@@ -15,13 +15,12 @@ const nextConfig: NextConfig = {
         hostname: 'ui-avatars.com',
       },
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3001',
+        protocol: 'https',
+        hostname: 'picsum.photos',
       },
       {
         protocol: 'https',
-        hostname: 'picsum.photos',
+        hostname: 'i.pravatar.cc',
       },
     ],
   },

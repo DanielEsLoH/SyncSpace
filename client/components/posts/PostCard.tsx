@@ -183,13 +183,22 @@ export function PostCard({
         {post.picture && isValidImageUrl(post.picture) && (
           <Link href={`/posts/${post.id}`} className="block">
             <div className="relative w-full h-64 md:h-80 rounded-lg overflow-hidden bg-muted">
-              <Image
-                src={post.picture}
-                alt={post.title}
-                fill
-                className="object-cover hover:scale-105 transition-transform duration-300"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
+              {post.picture.includes('localhost') ? (
+                // Use regular img for localhost to bypass Next.js private IP restrictions
+                <img
+                  src={post.picture}
+                  alt={post.title}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <Image
+                  src={post.picture}
+                  alt={post.title}
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+              )}
             </div>
           </Link>
         )}

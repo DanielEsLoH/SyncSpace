@@ -113,7 +113,7 @@ module Api
               user: {
                 id: comment.user.id,
                 name: comment.user.name,
-                profile_picture: comment.user.profile_picture
+                profile_picture: comment.user.avatar_url
               },
               created_at: comment.created_at
             }
@@ -123,12 +123,12 @@ module Api
           id: post.id,
           title: post.title,
           description: post.description,
-          picture: post.picture,
+          picture: post.image_url,
           user: {
             id: post.user.id,
             name: post.user.name,
             email: post.user.email,
-            profile_picture: post.user.profile_picture
+            profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
           reactions_count: post.reactions.count,
@@ -161,7 +161,7 @@ module Api
               user: {
                 id: comment.user.id,
                 name: comment.user.name,
-                profile_picture: comment.user.profile_picture
+                profile_picture: comment.user.avatar_url
               },
               created_at: comment.created_at
             }
@@ -176,7 +176,7 @@ module Api
             id: post.user.id,
             name: post.user.name,
             email: post.user.email,
-            profile_picture: post.user.profile_picture
+            profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
           reactions_count: post.reactions.count,
@@ -188,7 +188,7 @@ module Api
             user: {
               id: user_reaction.user.id,
               name: user_reaction.user.name,
-              profile_picture: user_reaction.user.profile_picture
+              profile_picture: user_reaction.user.avatar_url
             },
             reactionable_type: user_reaction.reactionable_type,
             reactionable_id: user_reaction.reactionable_id,

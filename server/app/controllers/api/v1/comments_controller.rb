@@ -1,6 +1,8 @@
 module Api
   module V1
     class CommentsController < ApplicationController
+      include Api::V1::PostSerializable
+
       before_action :set_commentable, only: [ :index, :create ]
       before_action :set_comment, only: [ :update, :destroy ]
       before_action :authorize_comment_owner!, only: [ :update, :destroy ]
@@ -11,7 +13,7 @@ module Api
         comments = @commentable.comments.includes(:user, :reactions).order(created_at: :desc)
 
         render json: {
-          comments: comments.map { |c| comment_response(c) }
+          comments: comments.map { |c| serialize_comment(c, current_user) }
         }, status: :ok
       end
 
@@ -37,7 +39,7 @@ module Api
 
           render json: {
             message: "Comment created successfully",
-            comment: comment_response(comment)
+            comment: serialize_comment(comment, current_user)
           }, status: :created
         else
           render json: { errors: comment.errors.full_messages }, status: :unprocessable_entity
@@ -55,7 +57,7 @@ module Api
 
           render json: {
             message: "Comment updated successfully",
-            comment: comment_response(@comment)
+            comment: serialize_comment(@comment, current_user)
           }, status: :ok
         else
           render json: { errors: @comment.errors.full_messages }, status: :unprocessable_entity
@@ -157,14 +159,14 @@ module Api
           # This is a comment on a post
           ActionCable.server.broadcast("post_#{comment.commentable_id}_comments", {
             action: action,
-            comment: comment_response(comment)
+            comment: serialize_comment(comment, current_user)
           })
         else
           # This is a reply to a comment
           # Broadcast to the specific comment's replies channel
           ActionCable.server.broadcast("comment_#{comment.commentable_id}_replies", {
             action: action,
-            comment: comment_response(comment)
+            comment: serialize_comment(comment, current_user)
           })
 
           # ALSO broadcast to the root post's comments channel so all viewers get the update
@@ -173,113 +175,17 @@ module Api
           if root_post
             ActionCable.server.broadcast("post_#{root_post.id}_comments", {
               action: action,
-              comment: comment_response(comment)
+              comment: serialize_comment(comment, current_user)
             })
           end
         end
       end
 
       def broadcast_post_update(post)
-        # Reload the post to get fresh comment count and last comments
-        post.reload
-
-        # Get last 3 comments for preview
-        last_three_comments = post.comments
-          .where(commentable_type: "Post")
-          .order(created_at: :desc)
-          .limit(3)
-          .includes(:user)
-          .map do |comment|
-            {
-              id: comment.id,
-              description: comment.description,
-              user: {
-                id: comment.user.id,
-                name: comment.user.name,
-                profile_picture: comment.user.profile_picture
-              },
-              created_at: comment.created_at
-            }
-          end
-
-        # Get current user's reaction if authenticated
-        user_reaction = if current_user
-          post.reactions.find_by(user: current_user)
-        else
-          nil
-        end
-
-        # Broadcast updated post data to PostsChannel
         ActionCable.server.broadcast("posts_channel", {
           action: "update_post",
-          post: {
-            id: post.id,
-            title: post.title,
-            description: post.description,
-            picture: post.picture,
-            user: {
-              id: post.user.id,
-              name: post.user.name,
-              email: post.user.email,
-              profile_picture: post.user.profile_picture
-            },
-            tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-            reactions_count: post.reactions.count,
-            comments_count: post.comments.where(commentable_type: "Post").count,
-            last_three_comments: last_three_comments,
-            user_reaction: user_reaction ? {
-              id: user_reaction.id,
-              reaction_type: user_reaction.reaction_type,
-              user: {
-                id: user_reaction.user.id,
-                name: user_reaction.user.name,
-                profile_picture: user_reaction.user.profile_picture
-              },
-              reactionable_type: user_reaction.reactionable_type,
-              reactionable_id: user_reaction.reactionable_id,
-              created_at: user_reaction.created_at
-            } : nil,
-            created_at: post.created_at,
-            updated_at: post.updated_at
-          }
+          post: serialize_post(post, current_user)
         })
-      end
-
-      def comment_response(comment)
-        # Get current user's reaction if authenticated
-        user_reaction = if current_user
-          comment.reactions.find_by(user: current_user)
-        else
-          nil
-        end
-
-        {
-          id: comment.id,
-          description: comment.description,
-          commentable_type: comment.commentable_type,
-          commentable_id: comment.commentable_id,
-          user: {
-            id: comment.user.id,
-            name: comment.user.name,
-            profile_picture: comment.user.profile_picture
-          },
-          reactions_count: comment.reactions.count,
-          replies_count: comment.comments.count,
-          user_reaction: user_reaction ? {
-            id: user_reaction.id,
-            reaction_type: user_reaction.reaction_type,
-            user: {
-              id: user_reaction.user.id,
-              name: user_reaction.user.name,
-              profile_picture: user_reaction.user.profile_picture
-            },
-            reactionable_type: user_reaction.reactionable_type,
-            reactionable_id: user_reaction.reactionable_id,
-            created_at: user_reaction.created_at
-          } : nil,
-          created_at: comment.created_at,
-          updated_at: comment.updated_at
-        }
       end
     end
   end

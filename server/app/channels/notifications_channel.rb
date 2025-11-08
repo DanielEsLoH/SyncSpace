@@ -19,10 +19,7 @@ class NotificationsChannel < ApplicationCable::Channel
     notification_id = data["notification_id"]
     notification = current_user.notifications.find_by(id: notification_id)
 
-    if notification
-      notification.mark_as_read!
-      transmit({ action: "notification_read", notification_id: notification_id })
-    end
+    notification&.mark_as_read!
   end
 
   # Mark all notifications as read
@@ -30,6 +27,5 @@ class NotificationsChannel < ApplicationCable::Channel
     return unless current_user
 
     Notification.mark_all_as_read(current_user)
-    transmit({ action: "all_notifications_read" })
   end
 end
