@@ -322,15 +322,15 @@ RSpec.describe 'Api::V1::Users', type: :request do
         expect(tag).to include(:id, :name, :color)
       end
 
-      it 'includes truncated description' do
+      it 'includes the full description' do
         long_description = 'a' * 200
         post = create(:post, user: user, title: 'Long Post', description: long_description)
 
         get "/api/v1/users/#{user.id}/posts"
 
         post_result = json_response[:posts].find { |p| p[:id] == post.id }
-        expect(post_result[:description].length).to be <= 154 # 150 + '...'
-        expect(post_result[:description]).to end_with('...')
+        expect(post_result[:description].length).to eq(200)
+        expect(post_result[:description]).to eq(long_description)
       end
 
       it 'returns posts ordered by created_at desc' do
@@ -426,6 +426,25 @@ RSpec.describe 'Api::V1::Users', type: :request do
         post_result = json_response[:posts].find { |p| p[:id] == post.id }
         expect(post_result[:reactions_count]).to eq(3)
         expect(post_result[:comments_count]).to eq(5)
+      end
+    end
+
+    context 'when viewing posts with reactions from the current user' do
+      let!(:post_to_react_to) { posts.last } # Use .last as it's guaranteed to be on the first page
+      let!(:reaction) { create(:reaction, reactionable: post_to_react_to, user: other_user, reaction_type: 'love') }
+
+      it 'includes the user_reaction in the response' do
+        # Make request as 'other_user' who made the reaction
+        get "/api/v1/users/#{user.id}/posts", headers: auth_headers(other_user)
+
+        expect(response).to have_http_status(:ok)
+
+        post_result = json_response[:posts].find { |p| p[:id] == post_to_react_to.id }
+
+        expect(post_result[:user_reaction]).not_to be_nil
+        expect(post_result[:user_reaction][:id]).to eq(reaction.id)
+        expect(post_result[:user_reaction][:reaction_type]).to eq('love')
+        expect(post_result[:user_reaction][:reactionable_id]).to eq(post_to_react_to.id)
       end
     end
   end

@@ -70,7 +70,7 @@ module Api
           {
             id: notification.actor.id,
             name: notification.actor.name,
-            profile_picture: notification.actor.profile_picture
+            profile_picture: notification.actor.avatar_url
           }
         else
           {

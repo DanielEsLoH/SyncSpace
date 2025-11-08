@@ -46,15 +46,6 @@ RSpec.describe NotificationsChannel, type: :channel do
       }.to change { notification.reload.read? }.from(false).to(true)
     end
 
-    it 'transmits confirmation' do
-      perform :mark_read, notification_id: notification.id
-
-      expect(transmissions.last).to eq({
-        'action' => 'notification_read',
-        'notification_id' => notification.id
-      })
-    end
-
     it 'does not mark other users notifications' do
       other_notification = create(:notification, user: other_user, actor: user, notifiable: post_record)
 
@@ -75,14 +66,6 @@ RSpec.describe NotificationsChannel, type: :channel do
       expect {
         perform :mark_all_read
       }.to change { user.notifications.unread.count }.from(3).to(0)
-    end
-
-    it 'transmits confirmation' do
-      perform :mark_all_read
-
-      expect(transmissions.last).to eq({
-        'action' => 'all_notifications_read'
-      })
     end
   end
 

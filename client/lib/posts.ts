@@ -27,7 +27,8 @@ export const postsService = {
     formData.append('post[description]', data.description);
 
     if (data.picture) {
-      formData.append('post[picture]', data.picture);
+      // Send as 'image' for Active Storage
+      formData.append('post[image]', data.picture);
     }
 
     if (data.tags && data.tags.length > 0) {
@@ -36,12 +37,12 @@ export const postsService = {
       });
     }
 
-    const response = await api.post<Post>('/posts', formData, {
+    const response = await api.post<{ post: Post }>('/posts', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.post;
   },
 
   // Update a post
@@ -50,7 +51,10 @@ export const postsService = {
 
     if (data.title) formData.append('post[title]', data.title);
     if (data.description) formData.append('post[description]', data.description);
-    if (data.picture) formData.append('post[picture]', data.picture);
+    if (data.picture) {
+      // Send as 'image' for Active Storage
+      formData.append('post[image]', data.picture);
+    }
 
     if (data.tags) {
       data.tags.forEach((tagName) => {
@@ -58,12 +62,12 @@ export const postsService = {
       });
     }
 
-    const response = await api.patch<Post>(`/posts/${id}`, formData, {
+    const response = await api.patch<{ post: Post }>(`/posts/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.post;
   },
 
   // Delete a post

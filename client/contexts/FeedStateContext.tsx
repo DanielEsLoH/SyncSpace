@@ -10,7 +10,7 @@ interface FeedStateContextType {
   addPosts: (newPosts: Post[]) => void;
   updatePost: (updatedPost: Post) => void;
   deletePost: (postId: number) => void;
-  updatePostReaction: (postId: number, reaction: Reaction | null) => void;
+  updatePostReaction: (postId: number, reaction: Reaction | null, reactionsCount: number) => void;
 }
 
 const FeedStateContext = createContext<FeedStateContextType | undefined>(undefined);
@@ -26,9 +26,10 @@ export function useFeedState() {
 interface FeedStateProviderProps {
   children: ReactNode;
   initialPosts?: Post[];
+  userId?: number;
 }
 
-export function FeedStateProvider({ children, initialPosts = [] }: FeedStateProviderProps) {
+export function FeedStateProvider({ children, initialPosts = [], userId }: FeedStateProviderProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [isInitialized, setIsInitialized] = useState(initialPosts.length > 0);
 
@@ -39,20 +40,18 @@ export function FeedStateProvider({ children, initialPosts = [] }: FeedStateProv
     }
   }, [isInitialized]);
 
-  const addPost = (newPost: Post) => {
+  const addPost = useCallback((newPost: Post) => {
     setPosts((prev) => {
       if (prev.some(p => p.id === newPost.id)) {
         return prev.map(p => p.id === newPost.id ? newPost : p);
       }
       return [newPost, ...prev];
     });
-  };
+  }, []);
 
-  const updatePost = (updatedPost: Post) => {
+  const updatePost = useCallback((updatedPost: Post) => {
     setPosts((prev) => prev.map((post) => {
       if (post.id === updatedPost.id) {
-        // Preserve the current user's reaction state if the update doesn't include it
-        // This prevents WebSocket broadcasts from wiping out user-specific data
         return {
           ...updatedPost,
           user_reaction: updatedPost.user_reaction !== undefined ? updatedPost.user_reaction : post.user_reaction
@@ -60,63 +59,43 @@ export function FeedStateProvider({ children, initialPosts = [] }: FeedStateProv
       }
       return post;
     }));
-  };
+  }, []);
 
-  const deletePost = (postId: number) => {
+  const deletePost = useCallback((postId: number) => {
     setPosts((prev) => prev.filter((post) => post.id !== postId));
-  };
+  }, []);
 
-  const addPosts = (newPosts: Post[]) => {
+  const addPosts = useCallback((newPosts: Post[]) => {
     setPosts((prev) => {
-      // Filter out posts that already exist
       const existingIds = new Set(prev.map(p => p.id));
       const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p.id));
       return [...prev, ...uniqueNewPosts];
     });
-  };
+  }, []);
 
-  const updatePostReaction = (postId: number, reaction: Reaction | null) => {
+  const updatePostReaction = useCallback((postId: number, reaction: Reaction | null, reactionsCount: number) => {
     setPosts((prev) =>
       prev.map((post) =>
-        post.id === postId ? { ...post, user_reaction: reaction } : post
+        post.id === postId
+          ? { ...post, user_reaction: reaction, reactions_count: reactionsCount }
+          : post
       )
     );
-  };
+  }, []);
 
-  // Listen to global WebSocket events
   useEffect(() => {
     const handleNewPost = (event: CustomEvent) => {
-      const { post } = event.detail;
-      addPost(post);
+      const newPost = event.detail.post as Post;
+      if (!userId || newPost.user.id === userId) {
+        addPost(newPost);
+      }
     };
-
-    const handleUpdatePost = (event: CustomEvent) => {
-      const { post } = event.detail;
-      updatePost(post);
-    };
-
-    const handleDeletePost = (event: CustomEvent) => {
-      const { postId } = event.detail;
-      deletePost(postId);
-    };
-
-    const handleReactionUpdate = (event: CustomEvent) => {
-      const { post } = event.detail;
-      // The broadcast post object doesn't include user_reaction (it's user-agnostic)
-      // updatePost will preserve the current user's reaction state
-      updatePost(post);
-    };
-
-    // Listen to user's own reaction updates (from any view)
+    const handleUpdatePost = (event: CustomEvent) => updatePost(event.detail.post);
+    const handleDeletePost = (event: CustomEvent) => deletePost(event.detail.postId);
+    const handleReactionUpdate = (event: CustomEvent) => updatePost(event.detail.post);
     const handleUserReactionUpdate = (event: CustomEvent) => {
       const { postId, userReaction, reactionsCount } = event.detail;
-      setPosts((prev) =>
-        prev.map((post) =>
-          post.id === postId
-            ? { ...post, user_reaction: userReaction, reactions_count: reactionsCount }
-            : post
-        )
-      );
+      updatePostReaction(postId, userReaction, reactionsCount);
     };
 
     window.addEventListener('ws:post:new', handleNewPost as EventListener);
@@ -132,7 +111,7 @@ export function FeedStateProvider({ children, initialPosts = [] }: FeedStateProv
       window.removeEventListener('ws:post:reaction', handleReactionUpdate as EventListener);
       window.removeEventListener('user-reaction-update', handleUserReactionUpdate as EventListener);
     };
-  }, [addPost, updatePost, deletePost]);
+  }, [addPost, updatePost, deletePost, updatePostReaction, userId]);
 
   const contextValue = {
     posts,

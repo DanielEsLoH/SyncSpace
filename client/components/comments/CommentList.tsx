@@ -1,35 +1,17 @@
 'use client';
 
-import { useState, useOptimistic, useEffect, startTransition } from 'react';
+import { useState, useOptimistic, useEffect, startTransition, useCallback } from 'react';
 import { Comment } from '@/types';
 import { CommentItem } from './CommentItem';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2 } from 'lucide-react';
 import { commentsService } from '@/lib/comments';
-import { wsClient } from '@/lib/websocket';
-import { tokenStorage } from '@/lib/auth';
+import { globalWebSocket } from '@/lib/globalWebSocket';
 import { toast } from 'sonner';
 
-/**
- * CommentList - Client Component
- *
- * Handles all interactive comment functionality:
- * - Form submission with optimistic updates
- * - Comment deletion
- * - Comment reactions
- * - Real-time UI updates
- *
- * OPTIMISTIC UI:
- * - New comments appear instantly
- * - Smooth UX without waiting for server
- * - Automatic rollback on errors
- *
- * PERFORMANCE:
- * - Only this component and its children hydrate
- * - Parent components remain static HTML
- * - Minimal JavaScript bundle
- */
+// Helper to identify optimistic comments (which use a temporary timestamp ID)
+const isOptimistic = (comment: Comment) => comment.id > 1_000_000_000;
 
 interface CommentListProps {
   postId: number;
@@ -50,214 +32,171 @@ export function CommentList({
   const [isLoading, setIsLoading] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
-  // Optimistic updates for instant feedback
   const [optimisticComments, addOptimisticComment] = useOptimistic(
     comments,
     (state, newComment: Comment) => [newComment, ...state]
   );
 
-  // Load comments on mount if not provided
+  // --- DATA FETCHING ---
   useEffect(() => {
     const loadComments = async () => {
       if (initialComments.length === 0) {
         setIsLoading(true);
         try {
           const response = await commentsService.getPostComments(postId);
-          // Backend returns { comments: [...] }
           setComments(response.comments || []);
         } catch (error) {
+          toast.error('Failed to load comments.');
         } finally {
           setIsLoading(false);
         }
       }
     };
-
     loadComments();
   }, [postId, initialComments.length]);
 
-  // Set up WebSocket for real-time comment updates
-  useEffect(() => {
-    const token = tokenStorage.getToken();
-    if (!token) {
-      return;
-    }
+  // --- REAL-TIME EVENT HANDLERS ---
+  const handleNewComment = useCallback((newComment: Comment) => {
+    // Only process comments relevant to this post
+    const isTopLevel = newComment.commentable_id === postId && newComment.commentable_type === 'Post';
+    const isReply = newComment.commentable_type === 'Comment';
 
-    // Connect WebSocket
-    wsClient.connect(token);
+    if (!isTopLevel && !isReply) return;
 
-    // Subscribe to comments channel and store listener ID
-    const listenerId = wsClient.subscribeToComments({
-      onNewComment: (comment: Comment) => {
-        // Check if this is a top-level comment on the post
-        if (comment.commentable_id === postId && comment.commentable_type === 'Post') {
-          setComments((prev) => {
-            if (prev.some(c => c.id === comment.id)) {
-              return prev;
-            }
-            // Prepend new comment to show at the top
-            return [comment, ...prev];
-          });
-        }
-        // Check if this is a reply to a comment (nested)
-        else if (comment.commentable_type === 'Comment') {
-          setComments((prev) =>
-            prev.map((parentComment) => {
-              // Find the parent comment this is a reply to
-              if (parentComment.id === comment.commentable_id) {
-                const existingReplies = parentComment.replies || [];
-
-                // Check if reply already exists
-                if (existingReplies.some(r => r.id === comment.id)) {
-                  return parentComment;
-                }
-
-                // Add the new reply
-                return {
-                  ...parentComment,
-                  replies: [comment, ...existingReplies],
-                  replies_count: (parentComment.replies_count || 0) + 1
-                };
-              }
-              return parentComment;
-            })
-          );
-        }
-      },
-      onUpdateComment: (comment: Comment) => {
-        if (comment.commentable_id === postId && comment.commentable_type === 'Post') {
-          setComments((prev) =>
-            prev.map((c) => (c.id === comment.id ? comment : c))
-          );
-        }
-      },
-      onDeleteComment: (commentId: number) => {
-        setComments((prev) => {
-          // Try to remove as top-level comment first
-          const withoutComment = prev.filter((c) => c.id !== commentId);
-
-          // If it wasn't a top-level comment, it might be a reply
-          if (withoutComment.length === prev.length) {
-            // No top-level comment was removed, so remove from replies
-            return prev.map((parentComment) => ({
+    setComments(prev => {
+      // If it's a reply, find the parent and add it
+      if (isReply) {
+        return prev.map(parentComment => {
+          if (parentComment.id === newComment.commentable_id) {
+            const existingReplies = parentComment.replies || [];
+            if (existingReplies.some(r => r.id === newComment.id)) return parentComment; // Already exists
+            return {
               ...parentComment,
-              replies: parentComment.replies?.filter(r => r.id !== commentId),
-              replies_count: parentComment.replies?.some(r => r.id === commentId)
-                ? Math.max(0, (parentComment.replies_count || 0) - 1)
-                : parentComment.replies_count
-            }));
+              replies: [newComment, ...existingReplies],
+              replies_count: (parentComment.replies_count || 0) + 1,
+            };
           }
-
-          return withoutComment;
+          return parentComment;
         });
-      },
+      }
+
+      // If it's a top-level comment, handle optimistic replacement
+      const optimisticIndex = prev.findIndex(isOptimistic);
+      if (optimisticIndex > -1) {
+        // Replace optimistic comment with the real one
+        const newComments = [...prev];
+        newComments[optimisticIndex] = newComment;
+        return newComments;
+      } else if (!prev.some(c => c.id === newComment.id)) {
+        // Add if it doesn't exist
+        return [newComment, ...prev];
+      }
+      return prev; // No change
     });
+  }, [postId]);
 
-    // Follow this specific post's comments
-    wsClient.followPostComments(postId);
+  const handleUpdateComment = useCallback((updatedComment: Comment) => {
+    setComments(prev =>
+      prev.map(c => (c.id === updatedComment.id ? updatedComment : c))
+    );
+  }, []);
 
-    // Cleanup - unsubscribe this specific listener
+  const handleDeleteComment = useCallback((commentId: number) => {
+    setComments(prev => {
+      const newComments = prev.filter(c => c.id !== commentId);
+      if (newComments.length < prev.length) return newComments;
+
+      // If not found at top level, check replies
+      return prev.map(parent => {
+        if (!parent.replies?.some(r => r.id === commentId)) return parent;
+        return {
+          ...parent,
+          replies: parent.replies.filter(r => r.id !== commentId),
+          replies_count: Math.max(0, (parent.replies_count || 0) - 1),
+        };
+      });
+    });
+  }, []);
+
+
+  // --- WEB SOCKET LIFECYCLE & EVENT LISTENERS ---
+  useEffect(() => {
+    // Tell the global manager we are interested in this post's comments
+    globalWebSocket.followPostComments(postId);
+
+    // The cleanup function tells the manager we are no longer interested
     return () => {
-      wsClient.unfollowPostComments(postId);
-      wsClient.unsubscribeFromComments(listenerId);
+      globalWebSocket.unfollowPostComments(postId);
     };
   }, [postId]);
 
-  /**
-   * Handle comment submission with optimistic update
-   */
+  useEffect(() => {
+    const newCommentListener = (event: CustomEvent) => handleNewComment(event.detail.comment);
+    const updateCommentListener = (event: CustomEvent) => handleUpdateComment(event.detail.comment);
+    const deleteCommentListener = (event: CustomEvent) => handleDeleteComment(event.detail.commentId);
+
+    window.addEventListener('ws:comment:new', newCommentListener as EventListener);
+    window.addEventListener('ws:comment:update', updateCommentListener as EventListener);
+    window.addEventListener('ws:comment:delete', deleteCommentListener as EventListener);
+
+    return () => {
+      window.removeEventListener('ws:comment:new', newCommentListener as EventListener);
+      window.removeEventListener('ws:comment:update', updateCommentListener as EventListener);
+      window.removeEventListener('ws:comment:delete', deleteCommentListener as EventListener);
+    };
+  }, [handleNewComment, handleUpdateComment, handleDeleteComment]);
+
+
+  // --- USER ACTIONS ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!commentText.trim()) return toast.error('Comment cannot be empty');
+    if (!isAuthenticated) return toast.error('Please log in to comment');
 
-    if (!commentText.trim()) {
-      toast.error('Comment cannot be empty');
-      return;
-    }
-
-    if (!isAuthenticated) {
-      toast.error('Please log in to comment');
-      return;
-    }
-
-    // Create optimistic comment for instant UI feedback
     const optimisticComment: Comment = {
-      id: Date.now(), // Temporary ID
+      id: Date.now(),
       description: commentText,
-      commentable_type: 'Post',
-      commentable_id: postId,
-      user: {
-        id: userId || 0,
-        name: 'You',
-        profile_picture: '',
-      },
-      reactions_count: 0,
-      replies_count: 0,
-      user_reaction: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      commentable_type: replyingTo ? 'Comment' : 'Post',
+      commentable_id: replyingTo ? replyingTo.id : postId,
+      user: { id: userId || 0, name: 'You', profile_picture: '' },
+      reactions_count: 0, replies_count: 0, user_reaction: null,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
 
-    // Add optimistically (must be wrapped in startTransition)
     startTransition(() => {
       addOptimisticComment(optimisticComment);
     });
+
     const previousText = commentText;
     setCommentText('');
     setIsSubmitting(true);
 
     try {
-      // Submit to server (either comment or reply)
-      const response = replyingTo
-        ? await commentsService.createReply(replyingTo.id, {
-            comment: {
-              description: previousText,
-            },
-          })
-        : await commentsService.createComment(postId, {
-            comment: {
-              description: previousText,
-            },
-          });
+      const payload = { comment: { description: previousText } };
+      replyingTo
+        ? await commentsService.createReply(replyingTo.id, payload)
+        : await commentsService.createComment(postId, payload);
 
-      // Replace optimistic comment with real one from server response
-      setComments((prev) => {
-        // Remove optimistic comment (has temp Date.now() ID) and add real comment
-        const withoutOptimistic = prev.filter((c) => c.id !== optimisticComment.id);
-        // Check if real comment already exists (from WebSocket)
-        if (withoutOptimistic.some((c) => c.id === response.comment.id)) {
-          return withoutOptimistic;
-        }
-        // Prepend new comment to show at the top
-        return [response.comment, ...withoutOptimistic];
-      });
+      // SUCCESS: The WebSocket 'ws:comment:new' event will handle replacing the optimistic comment.
+      // No manual state update is needed here, preventing race conditions.
+      if (replyingTo) setReplyingTo(null);
 
-      if (replyingTo) {
-        toast.success('Reply added!');
-        setReplyingTo(null);
-      } else {
-        toast.success('Comment added!');
-      }
     } catch (error: any) {
-      // Rollback on error - remove optimistic comment
-      setComments((prev) => prev.filter((c) => c.id !== optimisticComment.id));
-      setCommentText(previousText);
+      // ERROR: Rollback optimistic update
       toast.error(error.response?.data?.error || 'Failed to add comment');
+      setCommentText(previousText); // Restore text
+      // The optimistic comment is removed automatically by React on error
+      // but we need to trigger a re-render of the original state.
+      setComments(prev => prev.filter(c => c.id !== optimisticComment.id));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  /**
-   * Handle comment deletion
-   */
   const handleDelete = async (commentId: number) => {
-    if (!confirm('Are you sure you want to delete this comment?')) {
-      return;
-    }
-
-    // Optimistically remove comment
+    if (!confirm('Are you sure you want to delete this comment?')) return;
     const previousComments = comments;
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-
+    setComments(prev => prev.filter(c => c.id !== commentId));
     try {
       await commentsService.deleteComment(commentId);
       toast.success('Comment deleted!');
@@ -267,51 +206,24 @@ export function CommentList({
     }
   };
 
-  /**
-   * Handle reply button click
-   */
   const handleReply = (comment: Comment) => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to reply to comments');
-      return;
-    }
+    if (!isAuthenticated) return toast.error('Please log in to reply');
     setReplyingTo(comment);
-    // Scroll to comment form
-    const form = document.querySelector('form[data-comment-form]');
-    form?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.querySelector('form[data-comment-form]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  /**
-   * Handle comment reactions
-   */
-  const handleReact = async (
-    commentId: number,
-    reactionType: 'like' | 'love' | 'dislike'
-  ) => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to react to comments');
-      return;
-    }
-
+  const handleReact = async (commentId: number, reactionType: 'like' | 'love' | 'dislike') => {
+    if (!isAuthenticated) return toast.error('Please log in to react');
     try {
       const response = await commentsService.reactToComment(commentId, reactionType);
-
-      // Update reaction count in local state
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === commentId
-            ? { ...c, reactions_count: response.reactions_count }
-            : c
+      setComments(prev =>
+        prev.map(c =>
+          c.id === commentId ? { ...c, reactions_count: response.reactions_count, user_reaction: response.user_reaction } : c
         )
       );
-
-      if (response.action === 'removed') {
-        toast.success('Reaction removed');
-      } else if (response.action === 'changed') {
-        toast.success(`Changed to ${reactionType}`);
-      } else {
-        toast.success(`Reacted with ${reactionType}`);
-      }
+      if (response.action === 'removed') toast.success('Reaction removed');
+      else if (response.action === 'changed') toast.success(`Changed to ${reactionType}`);
+      else toast.success(`Reacted with ${reactionType}`);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to react');
     }
@@ -319,27 +231,18 @@ export function CommentList({
 
   return (
     <div className="space-y-6">
-      {/* Comment Form */}
-      {isAuthenticated ? (
+      {isAuthenticated && (
         <form onSubmit={handleSubmit} className="space-y-3" data-comment-form>
-          {/* Reply Indicator */}
           {replyingTo && (
             <div className="flex items-center justify-between p-2 bg-muted rounded-md">
               <span className="text-sm text-muted-foreground">
                 Replying to <span className="font-semibold">{replyingTo.user.name}</span>
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyingTo(null)}
-                className="h-6 px-2 text-xs"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setReplyingTo(null)} className="h-6 px-2 text-xs">
                 Cancel
               </Button>
             </div>
           )}
-
           <Textarea
             placeholder={replyingTo ? "Write your reply..." : "Add a comment..."}
             value={commentText}
@@ -349,22 +252,12 @@ export function CommentList({
             className="resize-none"
             aria-label="Comment text"
           />
-          <Button
-            type="submit"
-            disabled={isSubmitting || !commentText.trim()}
-            className="gap-2"
-          >
+          <Button type="submit" disabled={isSubmitting || !commentText.trim()} className="gap-2">
             <Send className="h-4 w-4" />
             {isSubmitting ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
           </Button>
         </form>
-      ) : (
-        <div className="text-center py-4 text-muted-foreground">
-          <p className="text-sm">Log in to add a comment</p>
-        </div>
       )}
-
-      {/* Comments List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

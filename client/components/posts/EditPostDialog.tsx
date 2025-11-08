@@ -96,8 +96,8 @@ export function EditPostDialog({
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image must be less than 5MB");
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image must be less than 10MB");
         return;
       }
 
@@ -245,7 +245,7 @@ export function EditPostDialog({
                   Choose Image
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  PNG, JPG, GIF up to 5MB
+                  PNG, JPG, GIF, WebP up to 10MB
                 </p>
               </div>
             ) : (

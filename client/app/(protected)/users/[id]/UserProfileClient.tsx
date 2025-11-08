@@ -173,6 +173,7 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
     setIsEditDialogOpen(false);
     setEditingPost(null);
     updatePost(updatedPost);
+    fetchUserPosts(1, false); // Re-fetch posts to ensure updated data is displayed
     toast.success('Post updated successfully!');
   };
 

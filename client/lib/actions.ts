@@ -3,5 +3,5 @@
 import { revalidateTag } from 'next/cache'
  
 export async function revalidatePostsFeed() {
-  revalidateTag('posts-feed')
+  revalidateTag('posts-feed', 'max')
 }

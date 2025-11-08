@@ -7,6 +7,12 @@ class User < ApplicationRecord
   has_many :reactions, dependent: :destroy
   has_many :notifications, dependent: :destroy
 
+  # Active Storage
+  has_one_attached :avatar do |attachable|
+    attachable.variant :thumb, resize_to_limit: [100, 100]
+    attachable.variant :medium, resize_to_limit: [300, 300]
+  end
+
   # Store accessor for JSONB preferences column
   store_accessor :preferences, :theme, :language
 
@@ -18,6 +24,8 @@ class User < ApplicationRecord
   validates :bio, length: { maximum: 500 }, allow_blank: true
   validates :theme, inclusion: { in: %w[light dark system], allow_nil: true }
   validates :language, inclusion: { in: %w[en es], allow_nil: true }
+  validate :avatar_format, if: -> { avatar.attached? }
+  validate :avatar_size, if: -> { avatar.attached? }
 
   # Callbacks
   before_save :downcase_email
@@ -32,6 +40,25 @@ class User < ApplicationRecord
   # Instance methods
   def confirmed?
     confirmed_at.present?
+  end
+
+  # Get avatar URL with fallback to default profile picture
+  def avatar_url(variant: :medium)
+    if avatar.attached?
+      if variant && avatar.variable?
+        Rails.application.routes.url_helpers.rails_representation_url(
+          avatar.variant(variant),
+          host: ENV.fetch("API_URL", "http://localhost:3001")
+        )
+      else
+        Rails.application.routes.url_helpers.rails_blob_url(
+          avatar,
+          host: ENV.fetch("API_URL", "http://localhost:3001")
+        )
+      end
+    else
+      profile_picture
+    end
   end
 
   def confirm!
@@ -109,5 +136,21 @@ class User < ApplicationRecord
     self.theme ||= "system"
     self.language ||= "en"
     save if changed?
+  end
+
+  # Validate avatar content type
+  def avatar_format
+    acceptable_types = [ "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" ]
+    unless avatar.content_type.in?(acceptable_types)
+      errors.add(:avatar, "must be a JPEG, PNG, GIF, or WebP image")
+    end
+  end
+
+  # Validate avatar file size (max 5MB)
+  def avatar_size
+    max_size = 5.megabytes
+    if avatar.byte_size > max_size
+      errors.add(:avatar, "must be less than #{max_size / 1.megabyte}MB")
+    end
   end
 end

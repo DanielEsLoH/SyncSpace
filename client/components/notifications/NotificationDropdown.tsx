@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Bell, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,115 +12,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { notificationsService } from '@/lib/notifications';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import { wsClient } from '@/lib/websocket';
-import { tokenStorage } from '@/lib/auth';
+import { globalWebSocket } from '@/lib/globalWebSocket';
 import { Notification } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
-/**
- * NotificationDropdown Component
- *
- * Displays a dropdown with recent notifications and unread count badge.
- * Updates in real-time via WebSocket (managed by NotificationsContext).
- */
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { notifications, unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
-  const { unreadCount, decrementUnreadCount, resetUnreadCount } = useNotifications();
 
-  // Fetch notifications when dropdown opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen]);
-
-  // Set up WebSocket for real-time notification updates in dropdown
-  useEffect(() => {
-    const token = tokenStorage.getToken();
-    if (!token) return;
-
-    // Connect WebSocket
-    wsClient.connect(token);
-
-    // Subscribe to notifications channel and store listener ID
-    const listenerId = wsClient.subscribeToNotifications({
-      onNewNotification: (notification: Notification) => {
-        // Add new notification and keep only the 5 most recent
-        setNotifications((prev) => {
-          // Check for duplicates
-          if (prev.some(n => n.id === notification.id)) {
-            return prev;
-          }
-          return [notification, ...prev].slice(0, 5);
-        });
-      },
-      onNotificationRead: (notificationId: number) => {
-        // Update notification read status
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notificationId ? { ...n, read: true } : n
-          )
-        );
-      },
-      onAllNotificationsRead: () => {
-        // Mark all notifications as read
-        setNotifications((prev) =>
-          prev.map((n) => ({ ...n, read: true }))
-        );
-      },
-    });
-
-    // Cleanup on unmount - unsubscribe this specific listener
-    return () => {
-      wsClient.unsubscribeFromNotifications(listenerId);
-    };
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await notificationsService.getNotifications({
-        page: 1,
-        per_page: 5,
-      });
-      setNotifications(response.notifications);
-    } catch (error) {
-    }
-  };
-
-  const handleMarkAsRead = async (notificationId: number, event: React.MouseEvent) => {
+  const handleMarkAsRead = (notificationId: number, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-
-    try {
-      await notificationsService.markAsRead(notificationId);
-      // Update local notifications list to show as read
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-      );
-      // Context will update the count via WebSocket
-    } catch (error) {
-      toast.error('Failed to mark notification as read');
-    }
+    // Optimistically update UI while waiting for WebSocket echo
+    // The context will handle the final state from the event
+    globalWebSocket.markNotificationAsRead(notificationId);
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await notificationsService.markAllAsRead();
-      // Update local notifications list to show all as read
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      // Context will update the count via WebSocket
-      toast.success('All notifications marked as read');
-    } catch (error) {
-      toast.error('Failed to mark all as read');
-    }
+  const handleMarkAllAsRead = () => {
+    globalWebSocket.markAllNotificationsAsRead();
+    toast.success('All notifications marked as read');
   };
 
   const getNotificationMessage = (notification: Notification) => {
-    const actorName = notification.actor.name;
+    const actorName = notification.actor?.name || 'A user';
 
     switch (notification.notification_type) {
       case 'comment_on_post':
@@ -139,17 +55,10 @@ export function NotificationDropdown() {
   };
 
   const getNotificationLink = (notification: Notification) => {
-    // If content was deleted, just go to notifications page
-    if (!notification.notifiable) {
-      return '/notifications';
-    }
-
-    if (notification.notifiable.type === 'Comment') {
-      return `/posts/${notification.notifiable.post_id}`;
-    } else if (notification.notifiable.type === 'Reaction') {
-      if (notification.notifiable.reactionable_type === 'Post') {
-        return `/posts/${notification.notifiable.reactionable_id}`;
-      }
+    if (!notification.notifiable) return '/notifications';
+    if (notification.notifiable.type === 'Comment') return `/posts/${notification.notifiable.post_id}`;
+    if (notification.notifiable.type === 'Reaction' && notification.notifiable.reactionable_type === 'Post') {
+      return `/posts/${notification.notifiable.reactionable_id}`;
     }
     return '/notifications';
   };
@@ -185,11 +94,11 @@ export function NotificationDropdown() {
 
         {notifications.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            No notifications
+            No new notifications
           </div>
         ) : (
           <>
-            {notifications.map((notification) => (
+            {notifications.slice(0, 5).map((notification) => (
               <DropdownMenuItem key={notification.id} asChild>
                 <Link
                   href={getNotificationLink(notification)}
@@ -208,6 +117,7 @@ export function NotificationDropdown() {
                         size="icon"
                         onClick={(e) => handleMarkAsRead(notification.id, e)}
                         className="h-6 w-6 flex-shrink-0"
+                        aria-label="Mark as read"
                       >
                         <Check className="h-3 w-3" />
                       </Button>

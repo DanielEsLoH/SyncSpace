@@ -32,7 +32,7 @@ export async function TrendingTags() {
           {tags.map((tag) => (
             <Link
               key={tag.id}
-              href={`/feed?tag=${tag.id}`}
+              href={`/tags/${tag.id}`}
               className="flex items-center justify-between group hover:bg-accent rounded-lg p-2 transition-colors"
             >
               <div className="flex items-center gap-2">

@@ -168,7 +168,8 @@ module Api
           id: user.id,
           name: user.name,
           email: user.email,
-          profile_picture: user.profile_picture,
+          profile_picture: user.avatar_url,
+          avatar_url: user.avatar_url,
           bio: user.bio,
           confirmed: user.confirmed?,
           created_at: user.created_at

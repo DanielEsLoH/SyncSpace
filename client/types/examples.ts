@@ -81,7 +81,7 @@ const createPostData: CreatePostData = {
   title: 'Introduction to TypeScript',
   description: 'TypeScript is a typed superset of JavaScript that compiles to plain JavaScript.',
   picture: 'https://example.com/typescript.jpg',
-  tag_ids: [1, 2, 3], // Tag IDs
+  tags: ['typescript', 'javascript', 'react'], // Tag names
 };
 
 const post: Post = {
@@ -275,13 +275,13 @@ const postFormState: FormState<CreatePostData> = {
     title: undefined,
     description: undefined,
     picture: undefined,
-    tag_ids: undefined,
+    tags: undefined,
   },
   touched: {
     title: true,
     description: true,
     picture: false,
-    tag_ids: false,
+    tags: false,
   },
   isSubmitting: false,
   isValid: true,

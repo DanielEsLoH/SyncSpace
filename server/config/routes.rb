@@ -50,6 +50,7 @@ Rails.application.routes.draw do
       end
 
       # Users
+      put "users/profile", to: "users#update_profile"
       resources :users, only: [ :show, :update ] do
         collection do
           get "search"
