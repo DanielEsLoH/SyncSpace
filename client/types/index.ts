@@ -386,14 +386,12 @@ export interface ErrorResponse {
  * User registration form data
  */
 export interface RegisterData {
-  user: {
-    name: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-    profile_picture?: string;
-    bio?: string;
-  };
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  profile_picture?: string;
+  bio?: string;
 }
 
 /**

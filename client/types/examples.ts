@@ -50,14 +50,12 @@ const loginCredentials: LoginCredentials = {
 };
 
 const registrationData: RegisterData = {
-  user: {
-    name: 'John Doe',
-    email: 'john@example.com',
-    password: 'password123',
-    password_confirmation: 'password123',
-    bio: 'Software developer passionate about TypeScript',
-    profile_picture: 'https://example.com/avatar.jpg',
-  },
+  name: 'John Doe',
+  email: 'john@example.com',
+  password: 'password123',
+  password_confirmation: 'password123',
+  bio: 'Software developer passionate about TypeScript',
+  profile_picture: 'https://example.com/avatar.jpg',
 };
 
 const authResponse: AuthResponse = {

@@ -85,8 +85,13 @@ module Api
 
         if user
           user.generate_reset_password_token
-          UserMailer.password_reset_email(user).deliver_later
-          render json: { message: "Password reset instructions sent to your email" }, status: :ok
+          begin
+            UserMailer.password_reset_email(user).deliver_now
+            render json: { message: "Password reset instructions sent to your email" }, status: :ok
+          rescue => e
+            Rails.logger.error "Failed to send password reset email: #{e.message}"
+            render json: { message: "If that email exists, password reset instructions have been sent" }, status: :ok
+          end
         else
           # Don't reveal if email exists or not (security best practice)
           render json: { message: "If that email exists, password reset instructions have been sent" }, status: :ok

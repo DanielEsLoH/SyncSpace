@@ -42,7 +42,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await registerUser({ user: formData });
+      const response = await registerUser(formData);
       toast.success(response.message || 'Registration successful! Please check your email.');
       // Redirect to login after successful registration
       router.push('/login');
