@@ -43,8 +43,8 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Replace the default in-process memory cache store with a durable alternative.
-  config.cache_store = :solid_cache_store
+  # Use Redis for caching (simpler than Solid Cache, no separate database required)
+  config.cache_store = :redis_cache_store, { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
 
   # Use async adapter for Active Job (simpler, no separate database required)
   # Solid Queue requires a separate database configuration which complicates deployment
