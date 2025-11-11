@@ -1,13 +1,18 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Post, User, UserBasic } from '@/types';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Post, User, UserBasic } from "@/types";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Heart,
   MessageCircle,
@@ -16,23 +21,23 @@ import {
   Trash2,
   TrendingUp,
   Eye,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { formatDistanceToNow } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dropdown-menu";
+import { formatDistanceToNow } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 function isValidImageUrl(url: string): boolean {
-  if (!url || typeof url !== 'string') return false;
-  if (url.startsWith('#<') || url.includes('ActionDispatch')) return false;
+  if (!url || typeof url !== "string") return false;
+  if (url.startsWith("#<") || url.includes("ActionDispatch")) return false;
   try {
-    if (url.startsWith('/')) return true;
+    if (url.startsWith("/")) return true;
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }
@@ -58,7 +63,7 @@ export function DashboardPostCard({
   const postAuthor = author || post.user;
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
+    if (!confirm("Are you sure you want to delete this post?")) return;
     setIsDeleting(true);
     try {
       await onDelete?.(post.id);
@@ -68,16 +73,17 @@ export function DashboardPostCard({
   };
 
   const getInitials = (name: string) => {
-    if (!name) return '??';
+    if (!name) return "??";
     return name
-      .split(' ')
+      .split(" ")
       .map((n) => n[0])
-      .join('')
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
-  const totalEngagement = (post.reactions_count || 0) + (post.comments_count || 0);
+  const totalEngagement =
+    (post.reactions_count || 0) + (post.comments_count || 0);
   const isHighEngagement = totalEngagement > 10;
 
   return (
@@ -140,7 +146,7 @@ export function DashboardPostCard({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -206,26 +212,28 @@ export function DashboardPostCard({
           <div className="flex items-center gap-6">
             <div
               className={cn(
-                'flex items-center gap-2 text-sm',
+                "flex items-center gap-2 text-sm",
                 post.reactions_count && post.reactions_count > 0
-                  ? 'text-red-600 dark:text-red-400 font-medium'
-                  : 'text-muted-foreground'
+                  ? "text-red-600 dark:text-red-400 font-medium"
+                  : "text-muted-foreground"
               )}
             >
               <Heart
                 className={cn(
-                  'h-4 w-4',
-                  post.reactions_count && post.reactions_count > 0 && 'fill-current'
+                  "h-4 w-4",
+                  post.reactions_count &&
+                    post.reactions_count > 0 &&
+                    "fill-current"
                 )}
               />
               <span>{post.reactions_count || 0}</span>
             </div>
             <div
               className={cn(
-                'flex items-center gap-2 text-sm',
+                "flex items-center gap-2 text-sm",
                 post.comments_count && post.comments_count > 0
-                  ? 'text-green-600 dark:text-green-400 font-medium'
-                  : 'text-muted-foreground'
+                  ? "text-green-600 dark:text-green-400 font-medium"
+                  : "text-muted-foreground"
               )}
             >
               <MessageCircle className="h-4 w-4" />
