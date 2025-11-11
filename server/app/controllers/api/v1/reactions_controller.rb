@@ -106,6 +106,9 @@ module Api
             })
           end
         end
+      rescue Redis::CannotConnectError, RedisClient::ConnectionError, EOFError => e
+        # Log the error but don't fail the request
+        Rails.logger.error("ActionCable broadcast failed: #{e.class} - #{e.message}")
       end
 
       # Serialize post for broadcast (user-agnostic, excludes user_reaction)
