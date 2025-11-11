@@ -5,6 +5,21 @@ require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 require 'rspec/rails'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
+require 'bullet'
 
 # Add SimpleCov for code coverage
 unless ENV['DISABLE_SIMPLECOV'] == 'true' || ENV['COVERAGE'] == 'false'
@@ -22,6 +37,10 @@ unless ENV['DISABLE_SIMPLECOV'] == 'true' || ENV['COVERAGE'] == 'false'
     add_group 'Services', 'app/services'
     add_group 'Lib', 'lib'
   end
+  SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new([
+    SimpleCov::Formatter::HTMLFormatter,
+    SimpleCov::Formatter::SimpleFormatter
+  ])
 end
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
@@ -51,6 +70,9 @@ RSpec.configure do |config|
   # Include FactoryBot methods
   config.include FactoryBot::Syntax::Methods
 
+  # Include ActionDispatch::TestProcess::FixtureFile for file uploads
+  config.include ActionDispatch::TestProcess::FixtureFile
+
   # Include ActiveSupport::Testing::TimeHelpers for time travel
   config.include ActiveSupport::Testing::TimeHelpers
 
@@ -60,12 +82,6 @@ RSpec.configure do |config|
     DatabaseCleaner.allow_remote_database_url = true
     DatabaseCleaner.strategy = :transaction
     DatabaseCleaner.clean_with(:truncation)
-  end
-
-  config.around(:each) do |example|
-    DatabaseCleaner.cleaning do
-      example.run
-    end
   end
 end
 

@@ -10,7 +10,7 @@ module Api
       #   user: search by username or @username or @email
       #   tag: search by tag name
       def index
-        posts = Post.includes(:user, :tags, :reactions, :comments).distinct
+        posts = Post.includes({ user: { avatar_attachment: :blob } }, :tags).distinct
 
         # Search by title
         if params[:title].present?
@@ -75,8 +75,8 @@ module Api
             profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-          reactions_count: post.reactions.size,
-          comments_count: post.comments.size,
+          reactions_count: post.reactions_count,
+          comments_count: post.comments_count,
           created_at: post.created_at,
           updated_at: post.updated_at
         }

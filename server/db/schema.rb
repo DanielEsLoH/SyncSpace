@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_08_021907) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_11_013159) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_021907) do
     t.string "reaction_type", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["reactionable_type", "reactionable_id", "user_id"], name: "index_reactions_on_reactionable_and_user"
     t.index ["reactionable_type", "reactionable_id"], name: "index_reactions_on_reactionable"
     t.index ["user_id", "reactionable_type", "reactionable_id", "reaction_type"], name: "index_reactions_on_user_and_reactionable_and_type", unique: true
     t.index ["user_id"], name: "index_reactions_on_user_id"
@@ -117,7 +118,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_021907) do
     t.string "color", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "posts_count", default: 0, null: false
     t.index ["name"], name: "index_tags_on_name", unique: true
+    t.index ["posts_count"], name: "index_tags_on_posts_count"
   end
 
   create_table "users", force: :cascade do |t|
@@ -136,9 +139,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_021907) do
     t.string "refresh_token"
     t.datetime "refresh_token_expires_at"
     t.jsonb "preferences", default: {}, null: false
+    t.integer "posts_count", default: 0, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["name"], name: "index_users_on_name", opclass: :gin_trgm_ops, using: :gin
+    t.index ["posts_count"], name: "index_users_on_posts_count"
     t.index ["preferences"], name: "index_users_on_preferences", using: :gin
     t.index ["refresh_token"], name: "index_users_on_refresh_token", unique: true
     t.index ["refresh_token_expires_at"], name: "index_users_on_refresh_token_expires_at"

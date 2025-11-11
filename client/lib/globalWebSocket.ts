@@ -55,6 +55,9 @@ class GlobalWebSocketManager {
       onDeleteComment: (commentId: number) => {
         window.dispatchEvent(new CustomEvent('ws:comment:delete', { detail: { commentId } }));
       },
+      onCommentReactionUpdate: (data: { comment: Comment; reaction_action: string }) => {
+        window.dispatchEvent(new CustomEvent('ws:comment:reaction', { detail: data }));
+      },
     });
 
     // Subscribe to notifications channel

@@ -5,11 +5,11 @@ module Api
 
       # GET /api/v1/tags
       def index
-        tags = Tag.includes(:posts).all
+        tags = Tag.all
 
         # Sort by popularity (most used) or alphabetically
         tags = if params[:sort] == "popular"
-          tags.left_joins(:posts).group("tags.id").order("COUNT(posts.id) DESC")
+          tags.order(posts_count: :desc)
         else
           tags.order(:name)
         end
@@ -29,12 +29,11 @@ module Api
 
       # GET /api/v1/tags/:id/posts
       def posts
-        tag = Tag.includes(posts: :user).find(params[:id])
-
+        tag = Tag.find(params[:id])
         page = params[:page]&.to_i || 1
         per_page = [ params[:per_page]&.to_i || 10, 50 ].min
 
-        posts = tag.posts.order(created_at: :desc)
+        posts = tag.posts.includes(:user).order(created_at: :desc)
 
         total_count = posts.count
         posts = posts.offset((page - 1) * per_page).limit(per_page)
@@ -60,7 +59,7 @@ module Api
           id: tag.id,
           name: tag.name,
           color: tag.color,
-          posts_count: tag.posts.count
+          posts_count: tag.posts_count
         }
       end
 

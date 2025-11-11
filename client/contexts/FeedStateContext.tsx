@@ -49,12 +49,15 @@ export function FeedStateProvider({ children, initialPosts = [], userId }: FeedS
     });
   }, []);
 
-  const updatePost = useCallback((updatedPost: Post) => {
+  const updatePost = useCallback((updatedPost: Post, preserveUserReaction = false) => {
     setPosts((prev) => prev.map((post) => {
       if (post.id === updatedPost.id) {
         return {
           ...updatedPost,
-          user_reaction: updatedPost.user_reaction !== undefined ? updatedPost.user_reaction : post.user_reaction
+          // Always preserve user_reaction for broadcasts, or when explicitly requested
+          user_reaction: preserveUserReaction || updatedPost.user_reaction === undefined
+            ? post.user_reaction
+            : updatedPost.user_reaction
         };
       }
       return post;
@@ -92,7 +95,8 @@ export function FeedStateProvider({ children, initialPosts = [], userId }: FeedS
     };
     const handleUpdatePost = (event: CustomEvent) => updatePost(event.detail.post);
     const handleDeletePost = (event: CustomEvent) => deletePost(event.detail.postId);
-    const handleReactionUpdate = (event: CustomEvent) => updatePost(event.detail.post);
+    // Broadcast reaction updates must preserve user_reaction (broadcasts don't include it)
+    const handleReactionUpdate = (event: CustomEvent) => updatePost(event.detail.post, true);
     const handleUserReactionUpdate = (event: CustomEvent) => {
       const { postId, userReaction, reactionsCount } = event.detail;
       updatePostReaction(postId, userReaction, reactionsCount);

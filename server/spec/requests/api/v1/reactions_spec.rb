@@ -27,6 +27,20 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
         expect(reaction.reaction_type).to eq('like')
       end
 
+      it 'returns the user_reaction in the response' do
+        post "/api/v1/posts/#{post_record.id}/reactions",
+             params: { reaction_type: 'like' },
+             headers: auth_headers(user)
+
+        expect(json_response[:user_reaction]).to include(
+          :id,
+          :reaction_type,
+          :user_id,
+          :created_at
+        )
+        expect(json_response[:user_reaction][:reaction_type]).to eq('like')
+      end
+
       it 'adds a love reaction to a post' do
         post "/api/v1/posts/#{post_record.id}/reactions",
              params: { reaction_type: 'love' },
@@ -121,7 +135,7 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
              params: { reaction_type: 'invalid' },
              headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid reaction type')
       end
 
@@ -130,7 +144,7 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
              params: { reaction_type: nil },
              headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid reaction type')
       end
 
@@ -139,7 +153,7 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
              params: { reaction_type: '' },
              headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid reaction type')
       end
     end
@@ -161,6 +175,28 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
 
         expect(response).to have_http_status(:not_found)
         expect(json_response[:error]).to eq('Reactionable not found')
+      end
+    end
+
+    context 'broadcasting' do
+      it 'broadcasts reaction update with correct payload' do
+        allow(ActionCable.server).to receive(:broadcast)
+
+        post "/api/v1/posts/#{post_record.id}/reactions",
+             params: { reaction_type: 'like' },
+             headers: auth_headers(user)
+
+        expect(ActionCable.server).to have_received(:broadcast).with(
+          'posts_channel',
+          hash_including(
+            post: hash_including(
+              id: post_record.id,
+              title: post_record.title,
+              comments_count: 0,
+              last_three_comments: []
+            )
+          )
+        )
       end
     end
   end
@@ -276,6 +312,13 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
           love: 0,
           dislike: 0
         )
+        expect(json_response[:user_reactions]).to be_empty
+      end
+
+      it 'returns correct user_reactions for a user with a reaction' do
+        get "/api/v1/posts/#{post_record.id}/reactions", headers: auth_headers(user)
+
+        expect(json_response[:user_reactions]).to contain_exactly('like')
       end
     end
 
@@ -375,7 +418,7 @@ RSpec.describe 'Api::V1::Reactions', type: :request do
              params: { reaction_type: type },
              headers: auth_headers(create_confirmed_user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid reaction type')
       end
     end

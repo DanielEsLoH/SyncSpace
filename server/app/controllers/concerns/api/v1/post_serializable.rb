@@ -4,17 +4,14 @@ module Api
       extend ActiveSupport::Concern
 
       def serialize_post(post, current_user = nil, include_all_comments: false)
-        # Reload post to ensure all associations and counts are fresh
-        post.reload
-
         comments_data = if include_all_comments
-          post.comments.where(commentable_type: "Post").includes(:user).order(created_at: :desc).map { |c| serialize_comment(c) }
+          post.comments.where(commentable_type: "Post").order(created_at: :desc).map { |c| serialize_comment(c) }
         else
           post.last_three_comments.map { |c| serialize_comment(c) }
         end
 
         user_reaction = if current_user
-          post.reactions.find_by(user: current_user)
+          post.reactions.find { |r| r.user_id == current_user.id }
         else
           nil
         end
@@ -31,8 +28,8 @@ module Api
             profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-          reactions_count: post.try(:reactions_count) || post.reactions.count,
-          comments_count: post.try(:comments_count) || post.comments.count,
+          reactions_count: post.reactions_count,
+          comments_count: post.comments_count,
           last_three_comments: comments_data,
           user_reaction: user_reaction ? serialize_reaction(user_reaction) : nil,
           created_at: post.created_at,
@@ -41,7 +38,9 @@ module Api
       end
 
       def serialize_comment(comment, current_user = nil)
-        user_reaction = if current_user
+        user_reaction = if current_user && comment.association(:reactions).loaded?
+          comment.reactions.find { |r| r.user_id == current_user.id }
+        elsif current_user
           comment.reactions.find_by(user: current_user)
         else
           nil
@@ -57,8 +56,8 @@ module Api
             name: comment.user.name,
             profile_picture: comment.user.avatar_url
           },
-          reactions_count: comment.reactions.count,
-          replies_count: comment.comments.count,
+          reactions_count: comment.reactions_count,
+          replies_count: comment.comments_count,
           user_reaction: user_reaction ? serialize_reaction(user_reaction) : nil,
           created_at: comment.created_at,
           updated_at: comment.updated_at

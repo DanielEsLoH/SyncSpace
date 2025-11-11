@@ -1,5 +1,5 @@
 class Post < ApplicationRecord
-  belongs_to :user
+  belongs_to :user, counter_cache: true
   has_many :comments, as: :commentable, dependent: :destroy
   has_many :reactions, as: :reactionable, dependent: :destroy
   has_many :notifications, as: :notifiable, dependent: :destroy
@@ -31,7 +31,13 @@ class Post < ApplicationRecord
   # Note: reactions_count and comments_count methods removed - using counter_cache columns
 
   def last_three_comments
-    comments.includes(:user).order(created_at: :desc).limit(3)
+    if association(:comments).loaded?
+      # If comments are preloaded, sort them in memory
+      comments.sort_by(&:created_at).reverse.first(3)
+    else
+      # Otherwise, query the database
+      comments.includes(:user).order(created_at: :desc).limit(3)
+    end
   end
 
   # Get image URL with fallback to picture field for backward compatibility
