@@ -180,14 +180,14 @@ export const getCachedPost = async (postId: number, token?: string) => {
  * @param token - Auth token (from getAuthToken())
  * @returns Paginated posts
  *
- * Cache: 30 seconds, tag: 'posts-feed'
+ * Cache: 5 seconds, tag: 'posts-feed'
  */
 export const getCachedPostsFeed = (page = 1, perPage = 10, token?: string) => {
   return createCachedFetch<PostsResponse>(
     `/posts?page=${page}&per_page=${perPage}`,
     token,
     ['posts-feed', page.toString(), perPage.toString(), token || 'anonymous'],
-    { revalidate: 30, tags: ['posts-feed'] }
+    { revalidate: 5, tags: ['posts-feed'] }  // Reduced to 5 seconds for reactions to show on reload
   )();
 };
 
