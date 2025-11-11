@@ -26,15 +26,18 @@ export function PostReactions({
   const [isLoading, setIsLoading] = useState(false);
   const [reactionsCount, setReactionsCount] = useState(initialReactionsCount);
   const [userReaction, setUserReaction] = useState<Reaction | null | undefined>(initialUserReaction);
+  const [originalCount, setOriginalCount] = useState(initialReactionsCount);
 
   const [optimisticReaction, setOptimisticReaction] = useOptimistic(
     userReaction,
     (state, newReaction: Reaction | null) => newReaction
   );
 
+  // Sync with parent updates (from broadcasts or context changes)
   useEffect(() => {
     setUserReaction(initialUserReaction);
     setReactionsCount(initialReactionsCount);
+    setOriginalCount(initialReactionsCount);
   }, [initialUserReaction, initialReactionsCount]);
 
   const handleReact = async (reactionType: ReactionType) => {
@@ -45,15 +48,30 @@ export function PostReactions({
 
     if (isLoading) return;
 
+    // Store original values for rollback
+    const previousReaction = userReaction;
+    const previousCount = reactionsCount;
+
     const isSameReaction = optimisticReaction?.reaction_type === reactionType;
     const newReaction = isSameReaction ? null : { reaction_type: reactionType } as Reaction;
-    const newReactionsCount = isSameReaction
-      ? reactionsCount - 1
-      : (optimisticReaction ? reactionsCount : reactionsCount + 1);
 
+    // Calculate optimistic count based on current state
+    let optimisticCount: number;
+    if (isSameReaction) {
+      // Removing reaction
+      optimisticCount = reactionsCount - 1;
+    } else if (optimisticReaction) {
+      // Changing reaction (like → love), count stays same
+      optimisticCount = reactionsCount;
+    } else {
+      // Adding new reaction
+      optimisticCount = reactionsCount + 1;
+    }
+
+    // Apply optimistic updates
     startTransition(() => {
       setOptimisticReaction(newReaction);
-      setReactionsCount(newReactionsCount);
+      setReactionsCount(optimisticCount);
     });
 
     setIsLoading(true);
@@ -61,13 +79,17 @@ export function PostReactions({
     try {
       const response = await postsService.reactToPost(postId, reactionType);
 
+      // Update with server response (source of truth)
       setUserReaction(response.user_reaction);
       setReactionsCount(response.reactions_count);
+      setOriginalCount(response.reactions_count);
 
+      // Notify parent component
       if (onReaction) {
         onReaction(response.user_reaction, response.reactions_count);
       }
 
+      // Dispatch event for cross-component sync
       window.dispatchEvent(new CustomEvent('user-reaction-update', {
         detail: {
           postId,
@@ -76,6 +98,7 @@ export function PostReactions({
         },
       }));
 
+      // User feedback
       if (response.action === 'removed') {
         toast.success('Reaction removed');
       } else if (response.action === 'changed') {
@@ -85,11 +108,13 @@ export function PostReactions({
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to react to post');
-      // Rollback
+
+      // Rollback to original state
       startTransition(() => {
-        setOptimisticReaction(userReaction || null);
-        setReactionsCount(reactionsCount);
+        setOptimisticReaction(previousReaction || null);
+        setReactionsCount(previousCount);
       });
+      setUserReaction(previousReaction);
     } finally {
       setIsLoading(false);
     }

@@ -65,6 +65,7 @@ group :test do
   gem "shoulda-matchers", "~> 6.0"
   gem "database_cleaner-active_record"
   gem "simplecov", "~> 0.22.0"
+  gem "bullet"
 end
 
 # Brevo (Sendinblue) API for email delivery

@@ -55,7 +55,39 @@ puts "Created #{tags.count} tags"
 
 puts "Creating posts..."
 posts = []
-20.times do |i|
+
+# Create Daniel's sample posts first
+daniel_posts_data = [
+  {
+    title: "Building a Real-Time Social Platform with Rails and Next.js",
+    description: "I recently completed SyncSpace, a modern social platform that demonstrates real-time features using ActionCable and WebSockets.\n\nKey features include:\n- Instant post updates across all clients\n- Real-time comment threads with unlimited nesting\n- Live reaction counts\n- WebSocket-based notification system\n\nThe tech stack includes Rails 8, Next.js 16, PostgreSQL, and Redis. All with 95% test coverage!",
+    tags: ["tech", "rails", "nextjs", "showcase"]
+  },
+  {
+    title: "Tips for Optimizing Rails API Performance",
+    description: "After working on several Rails API projects, here are my top tips for keeping your API fast and efficient:\n\n1. Use counter caches for frequently accessed counts\n2. Implement strategic eager loading to avoid N+1 queries\n3. Add proper database indexes on foreign keys\n4. Use Redis for caching expensive operations\n5. Consider using Rack::Attack for rate limiting\n\nWhat are your favorite performance optimization techniques?",
+    tags: ["rails", "tutorial", "tech"]
+  }
+]
+
+daniel_posts_data.each_with_index do |post_data, i|
+  post = Post.create!(
+    title: post_data[:title],
+    description: post_data[:description],
+    picture: "https://picsum.photos/800/600?random=daniel_#{i}",
+    user: daniel
+  )
+
+  post_data[:tags].each do |tag_name|
+    tag = tags.find { |t| t.name == tag_name }
+    post.tags << tag if tag && !post.tags.include?(tag)
+  end
+
+  posts << post
+end
+
+# Create random posts for other users
+18.times do |i|
   post = Post.create!(
     title: Faker::Lorem.sentence(word_count: 5),
     description: Faker::Lorem.paragraphs(number: 3).join("\n\n"),
@@ -76,6 +108,35 @@ puts "Created #{posts.count} posts"
 
 puts "Creating comments..."
 comments = []
+
+# Add specific comments to Daniel's posts
+daniel_first_post = posts.find { |p| p.user == daniel }
+if daniel_first_post
+  sample_comments = [
+    "This looks amazing! How did you handle the WebSocket connection management?",
+    "Really impressive work! I'd love to see a blog post about your architecture decisions.",
+    "The real-time features are super smooth. What made you choose ActionCable over other WebSocket solutions?"
+  ]
+
+  sample_comments.each do |comment_text|
+    comment = Comment.create!(
+      description: comment_text,
+      user: users.reject { |u| u == daniel }.sample,
+      commentable: daniel_first_post
+    )
+    comments << comment
+
+    # Add a reply from Daniel
+    reply = Comment.create!(
+      description: "Thanks! I chose ActionCable because it integrates seamlessly with Rails and Redis makes it easy to scale horizontally.",
+      user: daniel,
+      commentable: comment
+    )
+    comments << reply
+  end
+end
+
+# Add random comments to other posts
 posts.each do |post|
   # Each post gets 2-5 comments
   rand(2..5).times do
@@ -94,6 +155,16 @@ posts.each do |post|
         commentable: comment
       )
       comments << reply
+
+      # Occasionally add a second-level reply
+      if rand < 0.3
+        second_reply = Comment.create!(
+          description: Faker::Lorem.sentence(word_count: 8),
+          user: users.sample,
+          commentable: reply
+        )
+        comments << second_reply
+      end
     end
   end
 end
@@ -105,8 +176,14 @@ reactions_count = 0
 
 # Add reactions to posts
 posts.each do |post|
-  rand(1..4).times do
+  # Daniel's posts get more reactions for better demo
+  num_reactions = post.user == daniel ? rand(4..6) : rand(1..4)
+
+  num_reactions.times do
     user = users.sample
+    # Skip if user is the post owner
+    next if user == post.user
+
     reaction_type = [ 'like', 'love', 'dislike' ].sample
 
     # Avoid duplicate reactions (one reaction per user per post)
@@ -126,6 +203,9 @@ comments.each do |comment|
   if rand < 0.6 # 60% of comments get reactions
     rand(1..3).times do
       user = users.sample
+      # Skip if user is the comment owner
+      next if user == comment.user
+
       reaction_type = [ 'like', 'love' ].sample # Comments mostly get positive reactions
 
       unless Reaction.exists?(user: user, reactionable: comment)

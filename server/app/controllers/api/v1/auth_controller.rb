@@ -14,7 +14,7 @@ module Api
             user: user_response(user)
           }, status: :created
         else
-          render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -60,7 +60,7 @@ module Api
               user: user_response(user)
             }, status: :ok
           else
-            render json: { error: "Failed to confirm email" }, status: :unprocessable_entity
+            render json: { error: "Failed to confirm email" }, status: :unprocessable_content
           end
         else
           render json: { error: "Invalid confirmation token" }, status: :not_found
@@ -100,10 +100,10 @@ module Api
               user: user_response(user)
             }, status: :ok
           else
-            render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+            render json: { errors: user.errors.full_messages }, status: :unprocessable_content
           end
         else
-          render json: { error: "Invalid or expired reset token" }, status: :unprocessable_entity
+          render json: { error: "Invalid or expired reset token" }, status: :unprocessable_content
         end
       end
 

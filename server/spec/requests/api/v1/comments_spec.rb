@@ -166,7 +166,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         comment_params[:comment][:description] = nil
         post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description/))
       end
 
@@ -174,7 +174,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         comment_params[:comment][:description] = ''
         post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description/))
       end
 
@@ -182,7 +182,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         comment_params[:comment][:description] = 'a' * 2001
         post "/api/v1/posts/#{post_record.id}/comments", params: comment_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description.*too long/))
       end
     end
@@ -298,7 +298,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         update_params[:comment][:description] = ''
         put "/api/v1/comments/#{comment.id}", params: update_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description/))
       end
 
@@ -306,7 +306,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         update_params[:comment][:description] = 'a' * 2001
         put "/api/v1/comments/#{comment.id}", params: update_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description.*too long/))
       end
     end

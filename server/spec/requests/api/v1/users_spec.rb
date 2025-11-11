@@ -199,7 +199,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
             params: { user: { name: 'A' } },
             headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Name.*too short/))
       end
 
@@ -208,7 +208,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
             params: { user: { name: 'a' * 51 } },
             headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Name.*too long/))
       end
 
@@ -217,7 +217,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
             params: { user: { bio: 'a' * 501 } },
             headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Bio.*too long/))
       end
 
@@ -226,7 +226,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
             params: { user: { name: '' } },
             headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Name/))
       end
     end
@@ -482,6 +482,149 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(json_response[:user][:profile_picture]).to be_present
+    end
+  end
+
+  describe 'GET /api/v1/users/search' do
+    let!(:user1) { create_confirmed_user(name: 'John Doe', email: 'john.doe@example.com') }
+    let!(:user2) { create_confirmed_user(name: 'Jane Doe', email: 'jane.doe@example.com') }
+    let!(:user3) { create_confirmed_user(name: 'Peter Jones', email: 'peter.jones@example.com') }
+
+    context 'with a query that matches users' do
+      it 'returns the matched users' do
+        get '/api/v1/users/search', params: { q: 'Doe' }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:users].size).to eq(2)
+        expect(json_response[:users].map { |u| u[:name] }).to contain_exactly('John Doe', 'Jane Doe')
+      end
+    end
+
+    context 'with a query that does not match any user' do
+      it 'returns an empty array' do
+        get '/api/v1/users/search', params: { q: 'Unmatched' }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:users]).to be_empty
+        expect(json_response[:meta][:total_count]).to eq(0)
+      end
+    end
+
+    context 'with an empty query' do
+      it 'returns an empty array' do
+        get '/api/v1/users/search', params: { q: '' }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:users]).to be_empty
+        expect(json_response[:meta][:total_count]).to eq(0)
+      end
+    end
+
+    context 'with pagination' do
+      before do
+        # Create more users to test pagination
+        5.times { |i| create_confirmed_user(name: "Doe #{i}") }
+      end
+
+      it 'paginates the results' do
+        get '/api/v1/users/search', params: { q: 'Doe', per_page: 3 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:users].size).to eq(3)
+        expect(json_response[:meta][:total_count]).to eq(7) # 2 original + 5 new
+        expect(json_response[:meta][:total_pages]).to eq(3)
+        expect(json_response[:meta][:current_page]).to eq(1)
+      end
+
+      it 'fetches the second page' do
+        get '/api/v1/users/search', params: { q: 'Doe', per_page: 3, page: 2 }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:users].size).to eq(3)
+        expect(json_response[:meta][:current_page]).to eq(2)
+      end
+    end
+  end
+
+  describe 'PATCH /api/v1/users/:id/preferences' do
+    let(:update_params) { { theme: 'dark', language: 'es' } }
+
+    context 'when updating own preferences' do
+      it 'updates the preferences and returns a success message' do
+        patch "/api/v1/users/#{user.id}/preferences", params: update_params, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:message]).to eq('Preferences updated successfully')
+        expect(json_response[:preferences]).to include(theme: 'dark', language: 'es')
+
+        user.reload
+        expect(user.theme).to eq('dark')
+        expect(user.language).to eq('es')
+      end
+    end
+
+    context 'when updating another user\'s preferences' do
+      it 'returns a forbidden error' do
+        patch "/api/v1/users/#{other_user.id}/preferences", params: update_params, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(json_response[:error]).to eq('Forbidden: You can only update your own profile')
+      end
+    end
+
+    context 'with invalid params' do
+      it 'does not update the preferences' do
+        patch "/api/v1/users/#{user.id}/preferences", params: { unsupported: 'value' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        user.reload
+        expect(user.theme).not_to eq('unsupported')
+      end
+    end
+  end
+
+  describe 'PUT /api/v1/users/profile' do
+    let(:update_params) do
+      {
+        user: {
+          name: 'Updated Name',
+          bio: 'Updated bio',
+          avatar: fixture_file_upload(Rails.root.join('spec/fixtures/files/avatar.png'), 'image/png')
+        }
+      }
+    end
+
+    context 'when authenticated' do
+      it 'updates the current user profile' do
+        put '/api/v1/users/profile', params: update_params, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:message]).to eq('Profile updated successfully')
+        expect(json_response[:user][:name]).to eq('Updated Name')
+
+        user.reload
+        expect(user.name).to eq('Updated Name')
+        expect(user.bio).to eq('Updated bio')
+        expect(user.avatar.attached?).to be(true)
+        expect(user.avatar.filename.to_s).to eq('avatar.png')
+      end
+    end
+
+    context 'when not authenticated' do
+      it 'returns an unauthorized error' do
+        put '/api/v1/users/profile', params: update_params
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'with invalid data' do
+      it 'returns an unprocessable entity error' do
+        put '/api/v1/users/profile', params: { user: { name: 'a' * 51 } }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response[:errors]).to include(a_string_matching(/Name.*too long/))
+      end
     end
   end
 end

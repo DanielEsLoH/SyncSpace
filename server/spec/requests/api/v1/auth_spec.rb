@@ -59,7 +59,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         user_params[:user][:email] = nil
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Email/))
       end
 
@@ -68,7 +68,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         user_params[:user][:password_confirmation] = '12345'
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Password.*too short/))
       end
 
@@ -76,7 +76,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         user_params[:user][:password_confirmation] = 'different'
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Password confirmation/))
       end
 
@@ -84,7 +84,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         create_confirmed_user(email: 'john@example.com')
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Email.*taken/))
       end
 
@@ -92,7 +92,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         user_params[:user][:name] = 'J'
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Name.*too short/))
       end
 
@@ -100,7 +100,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         user_params[:user][:email] = 'invalid-email'
         post '/api/v1/auth/register', params: user_params
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Email.*invalid/))
       end
     end
@@ -320,7 +320,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
           password_confirmation: 'different'
         }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Password confirmation/))
       end
 
@@ -331,7 +331,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
           password_confirmation: '12345'
         }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Password.*too short/))
       end
 
@@ -342,7 +342,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
           password_confirmation: 'newpassword123'
         }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid or expired reset token')
       end
 
@@ -355,7 +355,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
           password_confirmation: 'newpassword123'
         }
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:error]).to eq('Invalid or expired reset token')
       end
     end
@@ -405,6 +405,52 @@ RSpec.describe 'Api::V1::Auth', type: :request do
 
         expect(response).to have_http_status(:unauthorized)
         expect(json_response[:error]).to eq('User not found')
+      end
+    end
+  end
+
+  describe 'POST /api/v1/auth/refresh' do
+    let!(:user) { create_confirmed_user }
+
+    context 'with a valid refresh token' do
+      it 'issues a new access token and a new refresh token' do
+        refresh_token = user.generate_refresh_token!
+        post '/api/v1/auth/refresh', params: { refresh_token: refresh_token }
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:token]).to be_present
+        expect(json_response[:refresh_token]).to be_present
+        expect(json_response[:token]).not_to eq(refresh_token)
+        expect(json_response[:refresh_token]).not_to eq(refresh_token)
+      end
+    end
+
+    context 'with a missing refresh token' do
+      it 'returns a bad request error' do
+        post '/api/v1/auth/refresh', params: { refresh_token: '' }
+
+        expect(response).to have_http_status(:bad_request)
+        expect(json_response[:error]).to eq('Refresh token is required')
+      end
+    end
+
+    context 'with an invalid refresh token' do
+      it 'returns an unauthorized error' do
+        post '/api/v1/auth/refresh', params: { refresh_token: 'invalid_token' }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response[:error]).to eq('Invalid refresh token')
+      end
+    end
+
+    context 'with an expired refresh token' do
+      it 'returns an unauthorized error' do
+        refresh_token = user.generate_refresh_token!
+        user.update!(refresh_token_expires_at: 1.hour.ago)
+        post '/api/v1/auth/refresh', params: { refresh_token: refresh_token }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response[:error]).to eq('Refresh token expired or invalid')
       end
     end
   end

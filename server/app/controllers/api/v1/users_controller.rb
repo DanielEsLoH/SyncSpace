@@ -22,6 +22,7 @@ module Api
 
         # Search in name and email
         users = User.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
+                    .includes([:avatar_attachment])
                     .order(created_at: :desc)
 
         total_count = users.count
@@ -51,7 +52,7 @@ module Api
             user: user_response(@user)
           }, status: :ok
         else
-          render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -66,7 +67,7 @@ module Api
             }
           }, status: :ok
         else
-          render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -78,7 +79,7 @@ module Api
             user: user_response(@current_user)
           }, status: :ok
         else
-          render json: { errors: @current_user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @current_user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -90,17 +91,16 @@ module Api
         # Get total count first (before group by)
         total_count = @user.posts.count
 
+        # Base query
+        posts_query = @user.posts.includes(:tags, { comments: :user }, image_attachment: :blob)
+
+        # Conditionally include reactions if a user is logged in
+        posts_query = posts_query.includes(:reactions) if @current_user
+
         # Fetch posts with aggregated counts
-        posts = @user.posts
-                     .includes(:tags, :reactions, :comments, :user)
-                     .left_joins(:comments, :reactions)
-                     .select('posts.*,
-                             COUNT(DISTINCT comments.id) as comments_count,
-                             COUNT(DISTINCT reactions.id) as reactions_count')
-                     .group("posts.id")
-                     .order("posts.created_at DESC")
-                     .offset((page - 1) * per_page)
-                     .limit(per_page)
+        posts = posts_query.order("posts.created_at DESC")
+                           .offset((page - 1) * per_page)
+                           .limit(per_page)
 
         render json: {
           posts: posts.map { |p| serialize_post(p, @current_user) },
@@ -152,9 +152,9 @@ module Api
           avatar_url: user.avatar_url,
           bio: user.bio,
           stats: {
-            total_posts: user.posts.count,
-            total_reactions: user.posts.joins(:reactions).count,
-            total_comments: user.posts.joins(:comments).count
+            total_posts: user.posts_count,
+            total_reactions: user.posts.sum(:reactions_count),
+            total_comments: user.posts.sum(:comments_count)
           },
           created_at: user.created_at
         }
@@ -168,7 +168,7 @@ module Api
           profile_picture: user.avatar_url,
           avatar_url: user.avatar_url,
           bio: user.bio,
-          posts_count: user.posts.count,
+          posts_count: user.posts_count,
           created_at: user.created_at
         }
       end

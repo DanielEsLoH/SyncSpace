@@ -265,7 +265,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post_params[:post][:title] = nil
         post '/api/v1/posts', params: post_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Title/))
       end
 
@@ -273,7 +273,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post_params[:post][:title] = 'AB'
         post '/api/v1/posts', params: post_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Title.*too short/))
       end
 
@@ -281,7 +281,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post_params[:post][:description] = nil
         post '/api/v1/posts', params: post_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description/))
       end
 
@@ -289,7 +289,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post_params[:post][:description] = 'Short'
         post '/api/v1/posts', params: post_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Description.*too short/))
       end
     end
@@ -366,7 +366,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         update_params[:post][:title] = 'AB'
         put "/api/v1/posts/#{post_to_update.id}", params: update_params, headers: auth_headers(user)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(json_response[:errors]).to include(a_string_matching(/Title.*too short/))
       end
     end

@@ -10,7 +10,10 @@ module Api
       # GET /api/v1/posts/:post_id/comments
       # GET /api/v1/comments/:comment_id/comments (replies)
       def index
-        comments = @commentable.comments.includes(:user, :reactions).order(created_at: :desc)
+        comments_query = @commentable.comments.includes(:user)
+        # Eager load reactions only when user is authenticated to avoid N+1
+        comments_query = comments_query.includes(:reactions) if current_user
+        comments = comments_query.order(created_at: :desc)
 
         render json: {
           comments: comments.map { |c| serialize_comment(c, current_user) }
@@ -42,7 +45,7 @@ module Api
             comment: serialize_comment(comment, current_user)
           }, status: :created
         else
-          render json: { errors: comment.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: comment.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -60,12 +63,13 @@ module Api
             comment: serialize_comment(@comment, current_user)
           }, status: :ok
         else
-          render json: { errors: @comment.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @comment.errors.full_messages }, status: :unprocessable_content
         end
       end
 
       # DELETE /api/v1/comments/:id
       def destroy
+        # Replies are eager loaded in set_comment for destroy action
         comment_id = @comment.id
         commentable_type = @comment.commentable_type
         commentable_id = @comment.commentable_id
@@ -117,7 +121,12 @@ module Api
       end
 
       def set_comment
-        @comment = Comment.find(params[:id])
+        if action_name == "destroy"
+          # Eager load all dependent associations to avoid N+1 during cascade delete
+          @comment = Comment.includes(:commentable, comments: [ :comments, :reactions, :notifications ]).find(params[:id])
+        else
+          @comment = Comment.find(params[:id])
+        end
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Comment not found" }, status: :not_found
       end

@@ -13,6 +13,7 @@ type CommentsCallbacks = {
   onNewComment?: (comment: any) => void;
   onUpdateComment?: (comment: any) => void;
   onDeleteComment?: (commentId: number) => void;
+  onCommentReactionUpdate?: (data: { comment: any; reaction_action: string }) => void;
 };
 
 type NotificationsCallbacks = {
@@ -148,6 +149,12 @@ class WebSocketClient {
                 break;
               case 'delete_comment':
                 listener.onDeleteComment?.(data.comment_id);
+                break;
+              case 'comment_reaction_update':
+                listener.onCommentReactionUpdate?.({
+                  comment: data.comment,
+                  reaction_action: data.reaction_action
+                });
                 break;
             }
           });

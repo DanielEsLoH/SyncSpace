@@ -133,12 +133,13 @@
 | **FactoryBot** | Latest | Fixture replacement for test data generation |
 | **SimpleCov** | 0.22 | Code coverage analysis |
 
-### Infrastructure
+### Infrastructure & Services
 
 - **Docker** & **Docker Compose**: Containerization for consistent development and deployment
 - **Puma**: Multi-threaded web server optimized for Rails
 - **Kamal**: Modern deployment tool for containerized applications
 - **Active Storage**: File upload handling with image processing
+- **Brevo (formerly Sendinblue)**: Transactional email service for user authentication flows (confirmation & password reset emails)
 
 ---
 
@@ -227,6 +228,11 @@ Ensure you have the following installed:
    SECRET_KEY_BASE=your_secret_key_here
    JWT_SECRET_KEY=your_jwt_secret_here
    FRONTEND_URL=http://localhost:3000
+
+   # Email configuration (Brevo)
+   BREVO_API_KEY=your_brevo_api_key
+   BREVO_SMTP_USERNAME=your_brevo_smtp_username
+   BREVO_SMTP_PASSWORD=your_brevo_smtp_password
    ```
 
    **Frontend** (`client/.env.local`):
@@ -411,8 +417,7 @@ SyncSpace/
 │
 ├── docs/                            # Documentation
 │   ├── API.md                       # Complete API reference
-│   ├── ARCHITECTURE.md              # Detailed architecture guide
-│   └── MAILERSEND_SETUP.md          # Email service configuration
+│   └── ARCHITECTURE.md              # Detailed architecture guide
 │
 ├── docker-compose.yml               # Docker Compose configuration
 └── README.md                        # This file
@@ -759,7 +764,9 @@ REDIS_URL=redis://host:6379/1
 SECRET_KEY_BASE=<generate with `rails secret`>
 JWT_SECRET_KEY=<generate with `rails secret`>
 FRONTEND_URL=https://your-frontend-domain.com
-MAILERSEND_API_KEY=your_mailersend_key
+BREVO_API_KEY=your_brevo_api_key
+BREVO_SMTP_USERNAME=your_brevo_smtp_username
+BREVO_SMTP_PASSWORD=your_brevo_smtp_password
 ```
 
 **Frontend:**
@@ -929,7 +936,7 @@ For licensing inquiries, please contact the author.
 
 - **Email**: [daniel.esloh@gmail.com](mailto:daniel.esloh@gmail.com)
 - **GitHub**: [@DanielEsLoH](https://github.com/DanielEsLoH)
-- **LinkedIn**: [Daniel E. Londoño](https://www.linkedin.com/in/daniel-e-londono/)
+- **LinkedIn**: [Daniel E. Londoño](https://www.linkedin.com/in/daniel-esteban-londoño-henao-b9212b1b9/)
 
 ---
 

@@ -36,10 +36,12 @@ module Api
         total_count = base_query.count
 
         # Build posts query with includes and counts
-        posts = base_query.includes(:user, :tags)
-                    .order(created_at: :desc)
-                    .offset((page - 1) * per_page)
-                    .limit(per_page)
+        posts_query = base_query.includes({ user: { avatar_attachment: :blob } }, :tags, image_attachment: :blob)
+        # Eager load reactions only when user is authenticated to avoid N+1
+        posts_query = posts_query.includes(:reactions) if @current_user
+        posts = posts_query.order(created_at: :desc)
+                           .offset((page - 1) * per_page)
+                           .limit(per_page)
 
         render json: {
           posts: posts.map { |post| serialize_post(post, @current_user) },
@@ -81,7 +83,7 @@ module Api
             post: serialize_post(post, current_user)
           }, status: :created
         else
-          render json: { errors: post.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: post.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -111,7 +113,7 @@ module Api
             post: serialize_post(@post, current_user)
           }, status: :ok
         else
-          render json: { errors: @post.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @post.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -132,7 +134,18 @@ module Api
       private
 
       def set_post
-        @post = Post.includes(:user, :tags, :reactions, comments: :user).find(params[:id])
+        case action_name
+        when "show"
+          includes_list = [:user, :tags, { comments: :user }]
+          includes_list << :reactions if @current_user
+          @post = Post.includes(includes_list).find(params[:id])
+        when "update"
+          @post = Post.includes(:user, :tags).find(params[:id])
+        when "destroy"
+          @post = Post.includes(comments: [ :comments, :reactions, :notifications ]).find(params[:id])
+        else
+          @post = Post.find(params[:id])
+        end
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Post not found" }, status: :not_found
       end

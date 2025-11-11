@@ -46,4 +46,25 @@ Rails.application.configure do
   # Action Mailer configuration for test environment
   config.action_mailer.delivery_method = :test
   config.action_mailer.default_url_options = { host: "test.host" }
+
+  if defined?(Bullet)
+    Bullet.enable = true
+    Bullet.alert = true
+    Bullet.bullet_logger = true
+    Bullet.console = true
+    Bullet.rails_logger = true
+    Bullet.add_footer = true
+    Bullet.raise = true # raise errors if N+1 query occurs
+
+    # Add safelist to ignore false positives and edge cases
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Comment", association: :user)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Post", association: :user)
+    # Authorization failures that waste eager loading are acceptable trade-offs
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Comment", association: :comments)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Comment", association: :commentable)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Post", association: :comments)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Post", association: :tags)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Post", association: :user)
+    Bullet.add_safelist(type: :unused_eager_loading, class_name: "Post", association: :post_tags)
+  end
 end

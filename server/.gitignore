@@ -37,5 +37,9 @@
 # macOS files
 .DS_Store
 
+# IDE
+.idea
+.vscode
+
 # Ignore SimpleCov lock file
 coverage/.resultset.json.lock

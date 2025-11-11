@@ -8,7 +8,7 @@ module Api
       # Body: { reaction_type: 'like' | 'love' | 'dislike' }
       def toggle
         unless Reaction::REACTION_TYPES.include?(params[:reaction_type])
-          return render json: { error: "Invalid reaction type" }, status: :unprocessable_entity
+          return render json: { error: "Invalid reaction type" }, status: :unprocessable_content
         end
 
         result = Reaction.toggle(
@@ -17,8 +17,12 @@ module Api
           reaction_type: params[:reaction_type]
         )
 
-        # Create notification if reaction was added or changed (not removed)
-        if [ "added", "changed" ].include?(result[:action]) && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
+        # Reload to get fresh counter cache value
+        @reactionable.reload
+
+        # Create notification only when reaction is added (not changed or removed)
+        # This prevents notification spam when users change from like to love, etc.
+        if result[:action] == "added" && @reactionable.respond_to?(:user) && @reactionable.user.id != current_user.id
           create_notification_for_reaction(result[:reaction])
         end
 
@@ -40,7 +44,7 @@ module Api
         render json: {
           action: result[:action],
           message: "Reaction #{result[:action]}",
-          reactions_count: @reactionable.reactions.count,
+          reactions_count: @reactionable.reactions_count,
           user_reaction: user_reaction_data
         }, status: :ok
       end
@@ -48,7 +52,7 @@ module Api
       # GET /api/v1/posts/:post_id/reactions
       # GET /api/v1/comments/:comment_id/reactions
       def index
-        reactions = @reactionable.reactions.includes(:user).group_by(&:reaction_type)
+        reactions = @reactionable.reactions.group_by(&:reaction_type)
 
         render json: {
           reactions: {
@@ -84,22 +88,28 @@ module Api
       end
 
       def broadcast_reaction_update(action)
-        # Broadcast to the posts channel if it's a post reaction
         if @reactionable.is_a?(Post)
-          # Reload associations to get fresh data
-          @reactionable.reload
-
-          # Use user-agnostic response for broadcasts
+          # Broadcast post reaction update to posts channel
           ActionCable.server.broadcast("posts_channel", {
             action: "reaction_update",
-            post: post_broadcast_response(@reactionable),
+            post: serialize_post_for_broadcast(@reactionable),
             reaction_action: action
           })
+        elsif @reactionable.is_a?(Comment)
+          # Broadcast comment reaction update to the post's comments channel
+          root_post = @reactionable.root_post
+          if root_post
+            ActionCable.server.broadcast("post_#{root_post.id}_comments", {
+              action: "comment_reaction_update",
+              comment: serialize_comment_for_broadcast(@reactionable),
+              reaction_action: action
+            })
+          end
         end
       end
 
-      # User-agnostic post response for broadcasts (excludes user_reaction)
-      def post_broadcast_response(post)
+      # Serialize post for broadcast (user-agnostic, excludes user_reaction)
+      def serialize_post_for_broadcast(post)
         # Get last 3 comments for preview
         last_three_comments = post.comments
           .where(commentable_type: "Post")
@@ -131,8 +141,8 @@ module Api
             profile_picture: post.user.avatar_url
           },
           tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-          reactions_count: post.reactions.count,
-          comments_count: post.try(:comments_count) || post.comments.count,
+          reactions_count: post.reactions_count,
+          comments_count: post.comments_count,
           last_three_comments: last_three_comments,
           # IMPORTANT: Don't include user_reaction in broadcasts - it's user-specific
           created_at: post.created_at,
@@ -140,62 +150,23 @@ module Api
         }
       end
 
-      def post_response(post)
-        # Get current user's reaction if authenticated
-        user_reaction = if @current_user
-          post.reactions.find_by(user: @current_user)
-        else
-          nil
-        end
-
-        # Get last 3 comments for preview
-        last_three_comments = post.comments
-          .where(commentable_type: "Post")
-          .order(created_at: :desc)
-          .limit(3)
-          .includes(:user)
-          .map do |comment|
-            {
-              id: comment.id,
-              description: comment.description,
-              user: {
-                id: comment.user.id,
-                name: comment.user.name,
-                profile_picture: comment.user.avatar_url
-              },
-              created_at: comment.created_at
-            }
-          end
-
+      # Serialize comment for broadcast (user-agnostic, excludes user_reaction)
+      def serialize_comment_for_broadcast(comment)
         {
-          id: post.id,
-          title: post.title,
-          description: post.description,
-          picture: post.picture,
+          id: comment.id,
+          description: comment.description,
+          commentable_type: comment.commentable_type,
+          commentable_id: comment.commentable_id,
           user: {
-            id: post.user.id,
-            name: post.user.name,
-            email: post.user.email,
-            profile_picture: post.user.avatar_url
+            id: comment.user.id,
+            name: comment.user.name,
+            profile_picture: comment.user.avatar_url
           },
-          tags: post.tags.map { |t| { id: t.id, name: t.name, color: t.color } },
-          reactions_count: post.reactions.count,
-          comments_count: post.try(:comments_count) || post.comments.count,
-          last_three_comments: last_three_comments,
-          user_reaction: user_reaction ? {
-            id: user_reaction.id,
-            reaction_type: user_reaction.reaction_type,
-            user: {
-              id: user_reaction.user.id,
-              name: user_reaction.user.name,
-              profile_picture: user_reaction.user.avatar_url
-            },
-            reactionable_type: user_reaction.reactionable_type,
-            reactionable_id: user_reaction.reactionable_id,
-            created_at: user_reaction.created_at
-          } : nil,
-          created_at: post.created_at,
-          updated_at: post.updated_at
+          reactions_count: comment.reactions_count,
+          replies_count: comment.comments_count,
+          # IMPORTANT: Don't include user_reaction in broadcasts - it's user-specific
+          created_at: comment.created_at,
+          updated_at: comment.updated_at
         }
       end
     end
