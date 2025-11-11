@@ -1,13 +1,15 @@
-# Configure ActionCable Redis adapter with SSL settings for production
-Rails.application.config.after_initialize do
-  if Rails.env.production? && ENV["REDIS_URL"]&.start_with?("rediss://")
-    # Configure ActionCable's Redis connection with SSL parameters
-    redis_url = ENV["REDIS_URL"]
+# Configure Redis SSL settings for production
+if Rails.env.production? && ENV["REDIS_URL"]&.start_with?("rediss://")
+  require 'redis'
 
-    ActionCable.server.config.cable = {
-      adapter: "redis",
-      url: redis_url,
-      ssl_params: { verify_mode: OpenSSL::SSL::VERIFY_NONE }
-    }
+  # Monkey-patch Redis to always use VERIFY_NONE for SSL in production
+  module RedisSSLPatch
+    def ssl_context(ssl_params)
+      ctx = super(ssl_params)
+      ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      ctx
+    end
   end
+
+  RedisClient::RubyConnection.prepend(RedisSSLPatch)
 end
