@@ -46,10 +46,9 @@ Rails.application.configure do
   # Replace the default in-process memory cache store with a durable alternative.
   config.cache_store = :solid_cache_store
 
-  # Replace the default in-process and non-durable queuing backend for Active Job.
-  config.active_job.queue_adapter = :solid_queue
-  # Use primary database for Solid Queue (not a separate queue database)
-  # config.solid_queue.connects_to = { database: { writing: :queue } }
+  # Use async adapter for Active Job (simpler, no separate database required)
+  # Solid Queue requires a separate database configuration which complicates deployment
+  config.active_job.queue_adapter = :async
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
