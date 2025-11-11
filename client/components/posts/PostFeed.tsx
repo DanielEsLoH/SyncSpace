@@ -58,8 +58,8 @@ export function PostFeed({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [page, setPage] = useState(initialPage);
 
-  const observer = useRef<IntersectionObserver>();
-  const loadMoreRef = useCallback(node => {
+  const observer = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useCallback((node: HTMLDivElement) => {
     if (isLoadingMore) return;
     if (observer.current) observer.current.disconnect();
     observer.current = new IntersectionObserver(entries => {

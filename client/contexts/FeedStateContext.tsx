@@ -89,7 +89,7 @@ export function FeedStateProvider({ children, initialPosts = [], userId }: FeedS
   useEffect(() => {
     const handleNewPost = (event: CustomEvent) => {
       const newPost = event.detail.post as Post;
-      if (!userId || newPost.user.id === userId) {
+      if (!userId || (newPost.user && newPost.user.id === userId)) {
         addPost(newPost);
       }
     };
