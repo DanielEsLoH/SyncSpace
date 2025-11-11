@@ -8,12 +8,24 @@ module Api
         user = User.new(register_params)
 
         if user.save
-          UserMailer.confirmation_email(user).deliver_later
-          render json: {
-            message: "Registration successful. Please check your email to confirm your account.",
-            user: user_response(user)
-          }, status: :created
+          begin
+            # Use deliver_now to catch email errors immediately
+            UserMailer.confirmation_email(user).deliver_now
+            render json: {
+              message: "Registration successful. Please check your email to confirm your account.",
+              user: user_response(user)
+            }, status: :created
+          rescue => e
+            Rails.logger.error "Failed to send confirmation email: #{e.message}"
+            # User is created but email failed - still return success but with warning
+            render json: {
+              message: "Registration successful. However, there was an issue sending the confirmation email. Please contact support.",
+              user: user_response(user),
+              email_error: true
+            }, status: :created
+          end
         else
+          Rails.logger.info "Registration failed: #{user.errors.full_messages.join(', ')}"
           render json: { errors: user.errors.full_messages }, status: :unprocessable_content
         end
       end
