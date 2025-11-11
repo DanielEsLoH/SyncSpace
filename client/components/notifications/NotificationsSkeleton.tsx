@@ -1,16 +1,21 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
+interface NotificationsSkeletonProps {
+  count?: number;
+}
+
 /**
  * NotificationsSkeleton Component
  *
  * Displays skeleton loading state for notifications list.
  * Provides visual feedback while notifications are loading.
+ * @param {number} [count=5] - The number of skeleton items to display.
  */
-export function NotificationsSkeleton() {
+export function NotificationsSkeleton({ count = 5 }: NotificationsSkeletonProps) {
   return (
     <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => (
         <Card key={i} className="border">
           <CardContent className="p-4">
             <div className="flex items-start gap-4">

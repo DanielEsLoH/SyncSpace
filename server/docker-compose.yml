@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:17
     container_name: syncspace_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -46,23 +46,21 @@ services:
       - "3001:3001"
     environment:
       RAILS_ENV: ${RAILS_ENV:-development}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-syncspace_development}
-      DATABASE_HOST: db
-      DATABASE_USERNAME: ${POSTGRES_USER:-postgres}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DATABASE_NAME: ${POSTGRES_DB:-syncspace_development}
-      REDIS_URL: redis://redis:6379/1
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/syncspace_development}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/1}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-development_secret_key_change_in_production}
       CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
       API_URL: ${API_URL:-http://localhost:3001}
       BREVO_API_KEY: ${BREVO_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@syncspace.com}
       ACTION_CABLE_URL: ${ACTION_CABLE_URL:-ws://localhost:3001/cable}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    # depends_on commented out to allow using external services
+    # Uncomment if using local db and redis services
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_healthy
     stdin_open: true
     tty: true
     networks:
