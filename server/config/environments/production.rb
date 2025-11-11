@@ -43,8 +43,12 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Use Redis for caching (simpler than Solid Cache, no separate database required)
-  config.cache_store = :redis_cache_store, { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+  # Use Redis for caching with SSL support
+  redis_cache_config = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+  if ENV["REDIS_URL"]&.start_with?("rediss://")
+    redis_cache_config[:ssl_params] = { verify_mode: OpenSSL::SSL::VERIFY_NONE }
+  end
+  config.cache_store = :redis_cache_store, redis_cache_config
 
   # Use async adapter for Active Job (simpler, no separate database required)
   # Solid Queue requires a separate database configuration which complicates deployment
