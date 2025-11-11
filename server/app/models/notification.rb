@@ -41,6 +41,9 @@ class Notification < ApplicationRecord
       action: "notification_read",
       notification_id: id
     })
+  rescue Redis::CannotConnectError, RedisClient::ConnectionError, EOFError => e
+    # Log the error but don't fail the mark as read operation
+    Rails.logger.error("Notification read broadcast failed: #{e.class} - #{e.message}")
   end
 
   def mark_as_unread!
@@ -51,9 +54,14 @@ class Notification < ApplicationRecord
   def self.mark_all_as_read(user)
     count = unread.where(user: user).update_all(read_at: Time.current)
     # Broadcast to the user's personal notification channel
-    NotificationsChannel.broadcast_to(user, {
-      action: "all_notifications_read"
-    })
+    begin
+      NotificationsChannel.broadcast_to(user, {
+        action: "all_notifications_read"
+      })
+    rescue Redis::CannotConnectError, RedisClient::ConnectionError, EOFError => e
+      # Log the error but don't fail the mark all as read operation
+      Rails.logger.error("Notification broadcast failed: #{e.class} - #{e.message}")
+    end
     count
   end
 
@@ -65,6 +73,9 @@ class Notification < ApplicationRecord
       action: "new_notification",
       notification: notification_data
     })
+  rescue Redis::CannotConnectError, RedisClient::ConnectionError, EOFError => e
+    # Log the error but don't fail the notification creation
+    Rails.logger.error("Notification broadcast failed: #{e.class} - #{e.message}")
   end
 
   def notification_data
