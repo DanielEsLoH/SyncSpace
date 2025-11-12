@@ -43,13 +43,12 @@ describe('RegisterPage', () => {
 
   it('renders the registration form', () => {
     render(<RegisterPage />);
-    expect(screen.getByText('Register', { selector: 'div' })).toBeInTheDocument();
+    expect(screen.getByText(/join syncspace/i)).toBeInTheDocument(); // Card description text
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/bio/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /register/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 
   it('updates form data on user input', async () => {
@@ -64,23 +63,24 @@ describe('RegisterPage', () => {
     expect(emailInput).toHaveValue('john@example.com');
   });
 
-  it('shows an error if passwords do not match', async () => {
+  it('disables submit button when passwords do not match', async () => {
     render(<RegisterPage />);
     const nameInput = screen.getByLabelText(/name/i);
     const emailInput = screen.getByLabelText(/email/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const registerButton = screen.getByRole('button', { name: /register/i });
+    const registerButton = screen.getByRole('button', { name: /create account/i });
 
     await userEvent.type(nameInput, 'John Doe');
     await userEvent.type(emailInput, 'john@example.com');
-    await userEvent.type(passwordInput, 'password123');
+    await userEvent.type(passwordInput, 'Password123');
     await userEvent.type(confirmPasswordInput, 'password456');
-    await userEvent.click(registerButton);
 
-    await waitFor(() => {
-      expect(mockedToast.error).toHaveBeenCalledWith('Passwords do not match');
-    });
+    // Button should be disabled when passwords don't match
+    expect(registerButton).toBeDisabled();
+
+    // Visual feedback should show passwords don't match
+    expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
   });
 
   it('handles successful registration', async () => {
@@ -94,20 +94,17 @@ describe('RegisterPage', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'John Doe');
     await userEvent.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'Password123');
 
-    await userEvent.click(screen.getByRole('button', { name: /register/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(registerMock).toHaveBeenCalledWith({
-        user: {
-          name: 'John Doe',
-          email: 'john@example.com',
-          password: 'password123',
-          password_confirmation: 'password123',
-          bio: '',
-        },
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'Password123',
+        password_confirmation: 'Password123',
       });
       expect(mockedToast.success).toHaveBeenCalledWith('Success!');
       expect(pushMock).toHaveBeenCalledWith('/login');
@@ -132,9 +129,9 @@ describe('RegisterPage', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'John Doe');
     await userEvent.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: /register/i }));
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'Password123');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(mockedToast.error).toHaveBeenCalledWith('Email has already been taken');
@@ -160,9 +157,9 @@ describe('RegisterPage', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'John Doe');
     await userEvent.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: /register/i }));
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'Password123');
+    await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(mockedToast.error).toHaveBeenCalledWith('Something went wrong');
@@ -180,14 +177,14 @@ describe('RegisterPage', () => {
 
     await userEvent.type(screen.getByLabelText(/name/i), 'John Doe');
     await userEvent.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'Password123');
 
-    const registerButton = screen.getByRole('button', { name: /register/i });
+    const registerButton = screen.getByRole('button', { name: /create account/i });
     await userEvent.click(registerButton);
 
     expect(registerButton).toBeDisabled();
-    expect(await screen.findByText('Loading...')).toBeInTheDocument();
+    expect(await screen.findByText('Creating Account...')).toBeInTheDocument();
     expect(screen.getByLabelText(/name/i)).toBeDisabled();
   });
 
