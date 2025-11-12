@@ -93,7 +93,7 @@ RSpec.describe BrevoDelivery do
           delivery.deliver!(mail)
         }.to raise_error(SibApiV3Sdk::ApiError)
 
-        expect(Rails.logger).to have_received(:error).with(/Error sending email via Brevo API/)
+        expect(Rails.logger).to have_received(:error).with(/Brevo API Error Details/)
       end
 
       it 'raises the error' do
