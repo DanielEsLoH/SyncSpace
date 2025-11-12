@@ -84,15 +84,27 @@ module Api
         user = User.find_by(email: params[:email]&.downcase)
 
         if user
+          Rails.logger.info "Forgot password: Found user #{user.id}, generating reset token..."
           user.generate_reset_password_token
           begin
-            UserMailer.password_reset_email(user).deliver_now
+            Rails.logger.info "Attempting to send password reset email to #{user.email}..."
+            Rails.logger.info "ActionMailer delivery method: #{ActionMailer::Base.delivery_method.inspect}"
+            Rails.logger.info "ActionMailer perform_deliveries: #{ActionMailer::Base.perform_deliveries}"
+
+            mail = UserMailer.password_reset_email(user)
+            Rails.logger.info "Mail object created: #{mail.class.name}"
+
+            mail.deliver_now
+            Rails.logger.info "Mail deliver_now completed successfully"
+
             render json: { message: "Password reset instructions sent to your email" }, status: :ok
           rescue => e
-            Rails.logger.error "Failed to send password reset email: #{e.message}"
+            Rails.logger.error "Failed to send password reset email: #{e.class} - #{e.message}"
+            Rails.logger.error e.backtrace.join("\n")
             render json: { message: "If that email exists, password reset instructions have been sent" }, status: :ok
           end
         else
+          Rails.logger.info "Forgot password: No user found for email"
           # Don't reveal if email exists or not (security best practice)
           render json: { message: "If that email exists, password reset instructions have been sent" }, status: :ok
         end
