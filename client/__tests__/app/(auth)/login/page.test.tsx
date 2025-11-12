@@ -44,10 +44,10 @@ describe('LoginPage', () => {
 
   it('should render the login form', () => {
     renderComponent();
-    expect(screen.getByText('Login', { selector: 'div' })).toBeInTheDocument();
+    expect(screen.getByText('Welcome Back')).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('should allow user to type in email and password', async () => {
@@ -66,7 +66,7 @@ describe('LoginPage', () => {
     renderComponent();
     const emailInput = screen.getByLabelText(/email/i);
     const passwordInput = screen.getByLabelText(/password/i);
-    const submitButton = screen.getByRole('button', { name: /login/i });
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
 
     await userEvent.type(emailInput, 'test@example.com');
     await userEvent.type(passwordInput, 'password123');
@@ -86,7 +86,7 @@ describe('LoginPage', () => {
 
     await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
       expect(mockedToast.success).toHaveBeenCalledWith('Login successful!');
@@ -102,7 +102,7 @@ describe('LoginPage', () => {
 
     await userEvent.type(screen.getByLabelText(/email/i), 'wrong@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrongpassword');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
       expect(mockedToast.error).toHaveBeenCalledWith('Invalid credentials');
