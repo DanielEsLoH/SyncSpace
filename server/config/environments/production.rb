@@ -44,8 +44,9 @@ Rails.application.configure do
   config.active_support.report_deprecations = false
 
   # Use Redis for caching
+  # In production, REDIS_URL must be set - no fallback to localhost
   config.cache_store = :redis_cache_store, {
-    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
+    url: ENV.fetch("REDIS_URL"),
     ssl_params: { verify_mode: OpenSSL::SSL::VERIFY_NONE }
   }
 
