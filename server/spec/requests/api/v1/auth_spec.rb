@@ -260,11 +260,11 @@ RSpec.describe 'Api::V1::Auth', type: :request do
     end
 
     context 'with non-existent email' do
-      it 'returns success message (security best practice)' do
+      it 'returns not found error' do
         post '/api/v1/auth/forgot_password', params: { email: 'nonexistent@example.com' }
 
-        expect(response).to have_http_status(:ok)
-        expect(json_response[:message]).to include('If that email exists')
+        expect(response).to have_http_status(:not_found)
+        expect(json_response[:error]).to eq('No account found with that email address')
       end
 
       it 'does not send email for non-existent user' do

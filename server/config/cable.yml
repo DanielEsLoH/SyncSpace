@@ -9,7 +9,8 @@ test:
 production:
   adapter: redis
   # In production, REDIS_URL must be set - no fallback to localhost
-  url: <%= ENV.fetch("REDIS_URL") %>
+  # Using ENV[] to avoid KeyError during config loading in test/development
+  url: <%= ENV["REDIS_URL"] %>
   channel_prefix: syncspace_production
   ssl_params:
     verify_mode: 0

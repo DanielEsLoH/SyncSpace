@@ -8,22 +8,12 @@ module Api
         user = User.new(register_params)
 
         if user.save
-          begin
-            # Use deliver_now to catch email errors immediately
-            UserMailer.confirmation_email(user).deliver_now
-            render json: {
-              message: "Registration successful. Please check your email to confirm your account.",
-              user: user_response(user)
-            }, status: :created
-          rescue => e
-            Rails.logger.error "Failed to send confirmation email: #{e.message}"
-            # User is created but email failed - still return success but with warning
-            render json: {
-              message: "Registration successful. However, there was an issue sending the confirmation email. Please contact support.",
-              user: user_response(user),
-              email_error: true
-            }, status: :created
-          end
+          # Send confirmation email asynchronously
+          UserMailer.confirmation_email(user).deliver_later
+          render json: {
+            message: "Registration successful. Please check your email to confirm your account.",
+            user: user_response(user)
+          }, status: :created
         else
           Rails.logger.info "Registration failed: #{user.errors.full_messages.join(', ')}"
           render json: { errors: user.errors.full_messages }, status: :unprocessable_content
@@ -85,14 +75,9 @@ module Api
 
         if user
           user.generate_reset_password_token
-          begin
-            UserMailer.password_reset_email(user).deliver_now
-            render json: { message: "Password reset instructions sent to your email" }, status: :ok
-          rescue => e
-            Rails.logger.error "Failed to send password reset email: #{e.class} - #{e.message}"
-            Rails.logger.error e.backtrace.join("\n")
-            render json: { error: "Failed to send email. Please try again later." }, status: :internal_server_error
-          end
+          # Send password reset email asynchronously
+          UserMailer.password_reset_email(user).deliver_later
+          render json: { message: "Password reset instructions sent to your email" }, status: :ok
         else
           render json: { error: "No account found with that email address" }, status: :not_found
         end
