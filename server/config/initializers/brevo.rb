@@ -5,6 +5,11 @@ SibApiV3Sdk.configure do |config|
 end
 
 # Register Brevo delivery method
-# Explicitly require the class to ensure it's loaded before registration
-require Rails.root.join('lib', 'brevo_delivery')
+# Load the class first to ensure it's available
+Rails.logger.info "Loading BrevoDelivery class..."
+require_dependency Rails.root.join('lib', 'brevo_delivery').to_s
+
+Rails.logger.info "Registering Brevo delivery method..."
 ActionMailer::Base.add_delivery_method :brevo, BrevoDelivery
+
+Rails.logger.info "Available delivery methods: #{ActionMailer::Base.delivery_methods.keys.inspect}"
