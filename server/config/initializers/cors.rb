@@ -7,11 +7,18 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins ENV.fetch("CLIENT_URL", "http://localhost:3000")
+    # Allow both local development and deployed frontend origins
+    origins(
+      "http://localhost:3000",           # Local development
+      "http://localhost:3001",           # Local development (alternative port)
+      ENV.fetch("CLIENT_URL", ""),       # Deployed frontend (from environment variable)
+      /\Ahttps:\/\/.*\.vercel\.app\z/   # Any Vercel deployment
+    )
 
     resource "*",
       headers: :any,
       methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
-      credentials: true
+      credentials: true,
+      expose: [ "Authorization" ]
   end
 end
