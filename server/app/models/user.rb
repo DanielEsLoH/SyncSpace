@@ -48,12 +48,12 @@ class User < ApplicationRecord
       if variant && avatar.variable?
         Rails.application.routes.url_helpers.rails_representation_url(
           avatar.variant(variant),
-          host: ENV.fetch("API_URL", "http://localhost:3001")
+          host: ENV.fetch("SERVER_URL")
         )
       else
         Rails.application.routes.url_helpers.rails_blob_url(
           avatar,
-          host: ENV.fetch("API_URL", "http://localhost:3001")
+          host: ENV.fetch("SERVER_URL")
         )
       end
     else

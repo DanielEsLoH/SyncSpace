@@ -73,13 +73,26 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
+  # Set default URL options for the entire application
+  # This is required for Active Storage to generate proper URLs for attachments
+  # SERVER_URL must be set in environment variables (e.g., https://your-backend.onrender.com)
+  Rails.application.routes.default_url_options = {
+    host: ENV.fetch("SERVER_URL"),
+    protocol: "https"
+  }
+
   # Action Mailer configuration - Brevo API
   config.action_mailer.delivery_method = :brevo
   config.action_mailer.perform_deliveries = true
   config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.default_url_options = { host: ENV.fetch("CLIENT_URL", "https://yourdomain.com") }
+  # CLIENT_URL must be set in environment variables (e.g., https://your-frontend.vercel.app)
+  config.action_mailer.default_url_options = {
+    host: ENV.fetch("CLIENT_URL"),
+    protocol: "https"
+  }
 
   # ActionCable configuration
-  config.action_cable.url = ENV.fetch("ACTION_CABLE_URL", "wss://yourdomain.com/cable")
-  config.action_cable.allowed_request_origins = [ ENV.fetch("CLIENT_URL", "https://yourdomain.com") ]
+  # ACTION_CABLE_URL must be set in environment variables (e.g., wss://your-backend.onrender.com/cable)
+  config.action_cable.url = ENV.fetch("ACTION_CABLE_URL")
+  config.action_cable.allowed_request_origins = [ ENV.fetch("CLIENT_URL") ]
 end
