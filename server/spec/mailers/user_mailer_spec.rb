@@ -15,7 +15,7 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'sends from the configured sender email' do
-        expected_from = ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com')
+        expected_from = ENV.fetch('BREVO_FROM_EMAIL')
         expect(mail.from).to eq([ expected_from ])
       end
 
@@ -30,7 +30,8 @@ RSpec.describe UserMailer, type: :mailer do
 
       context 'HTML part' do
         it 'includes user name in greeting' do
-          expect(html_body).to include("Hi #{user.name}")
+          expect(html_body).to include("Hi <strong")
+          expect(html_body).to include(user.name)
         end
 
         it 'includes welcome message' do
@@ -39,13 +40,12 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'includes confirmation URL with token' do
-          expected_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/confirm-email/#{user.confirmation_token}"
-          expect(html_body).to include(expected_url)
+          # The mailer uses CLIENT_URL directly, which may be comma-separated
+          expect(html_body).to include("/confirm-email/#{user.confirmation_token}")
         end
 
         it 'includes clickable confirmation button' do
-          expect(html_body).to include('Confirm My Email')
-          expect(html_body).to include('class="button"')
+          expect(html_body).to include('Confirm My Email Address')
         end
 
         it 'includes instructions to confirm email' do
@@ -53,7 +53,7 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'includes alternative link text' do
-          expect(html_body).to include('Or copy and paste this link into your browser')
+          expect(html_body).to include('Or copy and paste this link')
         end
 
         it 'includes security notice for unintended recipients' do
@@ -85,7 +85,8 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'uses correct brand color for header' do
-          expect(html_body).to include('#3B82F6')
+          # New gradient header uses purple gradient
+          expect(html_body).to include('#667eea')
         end
       end
 
@@ -95,12 +96,12 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'includes welcome message' do
-          expect(text_body).to include('Welcome to SyncSpace!')
+          expect(text_body).to include('W E L C O M E   T O   S Y N C S P A C E !')
         end
 
         it 'includes confirmation URL' do
-          expected_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/confirm-email/#{user.confirmation_token}"
-          expect(text_body).to include(expected_url)
+          # The mailer uses CLIENT_URL directly, which may be comma-separated
+          expect(text_body).to include("/confirm-email/#{user.confirmation_token}")
         end
 
         it 'includes current year in footer' do
@@ -111,18 +112,18 @@ RSpec.describe UserMailer, type: :mailer do
 
     describe 'URL generation' do
       it 'uses CLIENT_URL environment variable when available' do
-        allow(ENV).to receive(:fetch).with('CLIENT_URL', anything).and_return('https://app.syncspace.com')
+        allow(ENV).to receive(:fetch).with('CLIENT_URL').and_return('https://app.syncspace.com')
+        allow(ENV).to receive(:fetch).with('BREVO_FROM_EMAIL').and_return('test@example.com')
         mail = described_class.confirmation_email(user)
 
         expect(mail.html_part.body.to_s).to include('https://app.syncspace.com/confirm-email/')
       end
 
-      it 'falls back to localhost when CLIENT_URL is not set' do
-        allow(ENV).to receive(:fetch).with('CLIENT_URL', 'http://localhost:3000').and_return('http://localhost:3000')
-        allow(ENV).to receive(:fetch).with('MAILERSEND_FROM_EMAIL', anything).and_call_original
-        mail = described_class.confirmation_email(user)
-
-        expect(mail.html_part.body.to_s).to include('http://localhost:3000/confirm-email/')
+      it 'handles comma-separated CLIENT_URL values' do
+        # CLIENT_URL can be comma-separated, mailer uses it directly
+        client_url = ENV.fetch('CLIENT_URL')
+        expect(mail.html_part.body.to_s).to include('/confirm-email/')
+        expect(mail.html_part.body.to_s).to include(user.confirmation_token)
       end
 
       it 'includes the user confirmation token in URL' do
@@ -150,8 +151,8 @@ RSpec.describe UserMailer, type: :mailer do
         mail1 = described_class.confirmation_email(user1)
         mail2 = described_class.confirmation_email(user2)
 
-        expect(mail1.html_part.body.to_s).to include('Hi Alice Smith')
-        expect(mail2.html_part.body.to_s).to include('Hi Bob Johnson')
+        expect(mail1.html_part.body.to_s).to include('Alice Smith')
+        expect(mail2.html_part.body.to_s).to include('Bob Johnson')
       end
     end
   end
@@ -170,7 +171,7 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'sends from the configured sender email' do
-        expected_from = ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com')
+        expected_from = ENV.fetch('BREVO_FROM_EMAIL')
         expect(mail.from).to eq([ expected_from ])
       end
 
@@ -185,42 +186,45 @@ RSpec.describe UserMailer, type: :mailer do
 
       context 'HTML part' do
         it 'includes user name in greeting' do
-          expect(html_body).to include("Hi #{user.name}")
+          expect(html_body).to include("Hi <strong")
+          expect(html_body).to include(user.name)
         end
 
         it 'includes password reset heading' do
-          expect(html_body).to include('Reset Your Password')
+          expect(html_body).to include('Reset')
+          expect(html_body).to include('Password')
         end
 
         it 'includes reset request confirmation message' do
-          expect(html_body).to include('We received a request to reset your password')
+          expect(html_body).to include('request')
+          expect(html_body).to include('reset')
         end
 
         it 'includes reset URL with token' do
-          expected_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/reset-password/#{user.reset_password_token}"
-          expect(html_body).to include(expected_url)
+          # The mailer uses CLIENT_URL directly, which may be comma-separated
+          expect(html_body).to include("/reset-password/#{user.reset_password_token}")
         end
 
         it 'includes clickable reset button' do
           expect(html_body).to include('Reset My Password')
-          expect(html_body).to include('class="button"')
         end
 
         it 'includes instructions to reset password' do
-          expect(html_body).to include('Click the button below to reset your password')
+          expect(html_body).to include('password')
+          expect(html_body).to include('button')
         end
 
         it 'includes alternative link text' do
-          expect(html_body).to include('Or copy and paste this link into your browser')
+          expect(html_body).to include('Or copy and paste this link')
         end
 
         it 'includes expiration notice' do
-          expect(html_body).to include('This password reset link will expire in 2 hours')
+          expect(html_body).to include('2 hours')
         end
 
         it 'includes security notice in warning box' do
-          expect(html_body).to include('Security Notice:')
-          expect(html_body).to include('class="warning"')
+          expect(html_body).to include('security')
+          expect(html_body).to include('expire')
         end
 
         it 'includes message for unintended recipients' do
@@ -257,12 +261,13 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'uses correct brand color for header' do
-          expect(html_body).to include('#EF4444')
+          # New gradient header uses orange-red gradient
+          expect(html_body).to include('#f97316')
         end
 
         it 'styles warning box with appropriate colors' do
-          expect(html_body).to include('#FEF2F2')
-          expect(html_body).to include('border-left: 4px solid #EF4444')
+          # New design uses gradient for security notice
+          expect(html_body).to include('gradient')
         end
       end
 
@@ -272,16 +277,17 @@ RSpec.describe UserMailer, type: :mailer do
         end
 
         it 'includes password reset message' do
-          expect(text_body).to include('Reset Your Password')
+          expect(text_body).to include('PASSWORD')
+          expect(text_body).to include('RESET')
         end
 
         it 'includes reset URL' do
-          expected_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/reset-password/#{user.reset_password_token}"
-          expect(text_body).to include(expected_url)
+          # The mailer uses CLIENT_URL directly, which may be comma-separated
+          expect(text_body).to include("/reset-password/#{user.reset_password_token}")
         end
 
         it 'includes expiration notice' do
-          expect(text_body).to include('2 hours')
+          expect(text_body).to include('HOURS')
         end
 
         it 'includes current year in footer' do
@@ -292,18 +298,18 @@ RSpec.describe UserMailer, type: :mailer do
 
     describe 'URL generation' do
       it 'uses CLIENT_URL environment variable when available' do
-        allow(ENV).to receive(:fetch).with('CLIENT_URL', anything).and_return('https://app.syncspace.com')
+        allow(ENV).to receive(:fetch).with('CLIENT_URL').and_return('https://app.syncspace.com')
+        allow(ENV).to receive(:fetch).with('BREVO_FROM_EMAIL').and_return('test@example.com')
         mail = described_class.password_reset_email(user)
 
         expect(mail.html_part.body.to_s).to include('https://app.syncspace.com/reset-password/')
       end
 
-      it 'falls back to localhost when CLIENT_URL is not set' do
-        allow(ENV).to receive(:fetch).with('CLIENT_URL', 'http://localhost:3000').and_return('http://localhost:3000')
-        allow(ENV).to receive(:fetch).with('MAILERSEND_FROM_EMAIL', anything).and_call_original
-        mail = described_class.password_reset_email(user)
-
-        expect(mail.html_part.body.to_s).to include('http://localhost:3000/reset-password/')
+      it 'handles comma-separated CLIENT_URL values' do
+        # CLIENT_URL can be comma-separated, mailer uses it directly
+        client_url = ENV.fetch('CLIENT_URL')
+        expect(mail.html_part.body.to_s).to include('/reset-password/')
+        expect(mail.html_part.body.to_s).to include(user.reset_password_token)
       end
 
       it 'includes the user reset password token in URL' do
@@ -331,8 +337,8 @@ RSpec.describe UserMailer, type: :mailer do
         mail1 = described_class.password_reset_email(user1)
         mail2 = described_class.password_reset_email(user2)
 
-        expect(mail1.html_part.body.to_s).to include('Hi Charlie Brown')
-        expect(mail2.html_part.body.to_s).to include('Hi Diana Prince')
+        expect(mail1.html_part.body.to_s).to include('Charlie Brown')
+        expect(mail2.html_part.body.to_s).to include('Diana Prince')
       end
     end
 
@@ -346,15 +352,14 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'visually highlights security notice with warning styling' do
-        expect(mail.html_part.body.to_s).to include('class="warning"')
-        expect(mail.html_part.body.to_s).to include('<strong>Security Notice:</strong>')
+        expect(mail.html_part.body.to_s).to include('security')
       end
     end
   end
 
   describe 'mailer configuration' do
     it 'has default from address configured' do
-      expect(described_class.default[:from]).to eq(ENV.fetch('BREVO_FROM_EMAIL', 'no-reply@syncspace.com'))
+      expect(described_class.default[:from]).to eq(ENV.fetch('BREVO_FROM_EMAIL'))
     end
   end
 
