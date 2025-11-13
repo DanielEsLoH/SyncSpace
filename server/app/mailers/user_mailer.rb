@@ -1,9 +1,9 @@
 class UserMailer < ApplicationMailer
-  default from: ENV.fetch("BREVO_FROM_EMAIL", "no-reply@syncspace.com")
+  default from: ENV.fetch("BREVO_FROM_EMAIL")
 
   def confirmation_email(user)
     @user = user
-    @confirmation_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/confirm-email/#{user.confirmation_token}"
+    @confirmation_url = "#{ENV.fetch('CLIENT_URL')}/confirm-email/#{user.confirmation_token}"
 
     mail(
       to: user.email,
@@ -13,7 +13,7 @@ class UserMailer < ApplicationMailer
 
   def password_reset_email(user)
     @user = user
-    @reset_url = "#{ENV.fetch('CLIENT_URL', 'http://localhost:3000')}/reset-password/#{user.reset_password_token}"
+    @reset_url = "#{ENV.fetch('CLIENT_URL')}/reset-password/#{user.reset_password_token}"
 
     mail(
       to: user.email,

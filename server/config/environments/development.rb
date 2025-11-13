@@ -61,16 +61,16 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :brevo
   config.action_mailer.perform_deliveries = true
   config.action_mailer.raise_delivery_errors = true
-  config.action_mailer.default_url_options = { host: ENV.fetch("CLIENT_URL", "http://localhost:3000") }
+  config.action_mailer.default_url_options = { host: ENV.fetch("CLIENT_URL") }
 
   # Configure default URL options for routes (needed for Active Storage)
-  config.action_controller.default_url_options = { host: ENV.fetch("API_URL", "http://localhost:3001") }
-  Rails.application.routes.default_url_options = { host: ENV.fetch("API_URL", "http://localhost:3001") }
+  config.action_controller.default_url_options = { host: ENV.fetch("SERVER_URL") }
+  Rails.application.routes.default_url_options = { host: ENV.fetch("SERVER_URL") }
 
   # ActionCable configuration
   config.action_cable.disable_request_forgery_protection = true
   config.action_cable.allowed_request_origins = [
-    ENV.fetch("CLIENT_URL", "http://localhost:3000"),
+    ENV.fetch("CLIENT_URL"),
     /http:\/\/localhost:*/
   ]
 end
