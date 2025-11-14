@@ -137,9 +137,11 @@
 
 - **Docker** & **Docker Compose**: Containerization for consistent development and deployment
 - **Puma**: Multi-threaded web server optimized for Rails
-- **Kamal**: Modern deployment tool for containerized applications
-- **Active Storage**: File upload handling with image processing
-- **Brevo (formerly Sendinblue)**: Transactional email service for user authentication flows (confirmation & password reset emails)
+- **Active Storage**: File upload handling with image processing via libvips
+- **Cloudinary**: Cloud-based image storage and CDN for production deployments
+- **Brevo (formerly Sendinblue)**: Transactional email service via API for user authentication flows (confirmation & password reset emails)
+- **Vercel**: Production frontend hosting with automatic deployments
+- **Render**: Production backend hosting with managed PostgreSQL and Redis
 
 ---
 
@@ -223,24 +225,42 @@ Ensure you have the following installed:
    ```
    Then edit `server/.env` with your settings:
    ```ini
-   DATABASE_URL=postgresql://postgres:password@db:5432/syncspace_development
-   REDIS_URL=redis://redis:6379/1
-   SECRET_KEY_BASE=your_secret_key_here
-   JWT_SECRET_KEY=your_jwt_secret_here
-   FRONTEND_URL=http://localhost:3000
+   # For local development: Leave DATABASE_URL and REDIS_URL commented out
+   # (uses config/database.yml defaults: localhost PostgreSQL and Redis)
 
-   # Email configuration (Brevo)
-   BREVO_API_KEY=your_brevo_api_key
-   BREVO_SMTP_USERNAME=your_brevo_smtp_username
-   BREVO_SMTP_PASSWORD=your_brevo_smtp_password
+   # JWT Secret (generate with: rails secret)
+   JWT_SECRET_KEY=your_super_secret_jwt_key_change_this_in_production
+
+   # Brevo Email Service (API-based transactional emails)
+   BREVO_API_KEY=your_brevo_api_key_here
+   BREVO_FROM_EMAIL=no-reply@yourdomain.com
+
+   # URLs
+   CLIENT_URL=http://localhost:3000,http://localhost:3001
+   SERVER_URL=http://localhost:3001
+
+   # Cloudinary (Cloud storage for images)
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    ```
 
    **Frontend** (`client/.env.local`):
    ```bash
-   cat > client/.env.local << EOF
+   cp client/.env.example client/.env.local
+   ```
+   Then edit `client/.env.local` with your settings:
+   ```ini
+   # API Configuration
    NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
    NEXT_PUBLIC_WS_URL=ws://localhost:3001/cable
-   EOF
+
+   # Backend hostname for Next.js Image Optimization (production only, leave empty for local)
+   # NEXT_PUBLIC_BACKEND_HOSTNAME=
+
+   # Cloudinary (Optional - for image uploads)
+   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+   NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_preset
    ```
 
 ### Running with Docker (Recommended)
@@ -739,6 +759,22 @@ SyncSpace is fully containerized and ready for deployment on any platform that s
 
 **Recommended platforms:**
 
+- **Vercel** (Frontend): Zero-config Next.js deployment with automatic HTTPS and CDN
+  ```bash
+  # Install Vercel CLI
+  npm i -g vercel
+
+  # Deploy from client directory
+  cd client
+  vercel
+  ```
+
+- **Render** (Backend): Managed Rails hosting with PostgreSQL and Redis included
+  - Create a new Web Service pointing to your repository
+  - Add environment variables from the production list above
+  - Render will automatically detect Rails and run migrations
+
+- **Railway**: One-click deployment with automatic HTTPS for both frontend and backend
 - **Heroku**: Simple deployment with Heroku Postgres and Redis add-ons
   ```bash
   heroku create your-app-name
@@ -747,8 +783,6 @@ SyncSpace is fully containerized and ready for deployment on any platform that s
   git push heroku main
   ```
 
-- **Railway**: One-click deployment with automatic HTTPS
-- **Render**: Free tier with PostgreSQL and Redis included
 - **AWS ECS/Fargate**: Production-grade with full control
 - **DigitalOcean App Platform**: Managed platform with easy scaling
 
@@ -756,23 +790,45 @@ SyncSpace is fully containerized and ready for deployment on any platform that s
 
 Ensure these are set in your production environment:
 
-**Backend:**
+**Backend (e.g., Render):**
 ```ini
+# Rails environment
 RAILS_ENV=production
+
+# Database & Redis
 DATABASE_URL=postgresql://user:password@host:5432/syncspace_production
-REDIS_URL=redis://host:6379/1
-SECRET_KEY_BASE=<generate with `rails secret`>
-JWT_SECRET_KEY=<generate with `rails secret`>
-FRONTEND_URL=https://your-frontend-domain.com
+REDIS_URL=redis://user:password@host:6379/0
+
+# Secrets (generate with: rails secret)
+SECRET_KEY_BASE=<generate_with_rails_secret>
+JWT_SECRET_KEY=<generate_with_rails_secret>
+
+# Brevo Email Service (API-based transactional emails)
 BREVO_API_KEY=your_brevo_api_key
-BREVO_SMTP_USERNAME=your_brevo_smtp_username
-BREVO_SMTP_PASSWORD=your_brevo_smtp_password
+BREVO_FROM_EMAIL=no-reply@yourdomain.com
+
+# URLs
+CLIENT_URL=https://your-frontend-domain.com
+SERVER_URL=https://your-backend-domain.com
+
+# Cloudinary (Cloud storage for images)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
-**Frontend:**
+**Frontend (e.g., Vercel):**
 ```ini
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
-NEXT_PUBLIC_WS_URL=wss://your-api-domain.com/cable
+# API Configuration
+NEXT_PUBLIC_API_URL=https://your-backend-domain.com/api/v1
+NEXT_PUBLIC_WS_URL=wss://your-backend-domain.com/cable
+
+# Backend hostname for Next.js Image Optimization (ActiveStorage images)
+NEXT_PUBLIC_BACKEND_HOSTNAME=your-backend-domain.com
+
+# Cloudinary (Optional - for image uploads)
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
 ```
 
 ---
