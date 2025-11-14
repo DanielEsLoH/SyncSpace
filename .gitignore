@@ -26,3 +26,7 @@ BACKEND_SUMMARY.md
 # Temporary files
 tmp/
 temp/
+
+# Build output
+dist/
+build/
