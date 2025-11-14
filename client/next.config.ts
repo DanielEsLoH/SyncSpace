@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
       },
+      // Backend server for ActiveStorage images
+      ...(process.env.NEXT_PUBLIC_BACKEND_HOSTNAME ? [{
+        protocol: 'https' as const,
+        hostname: process.env.NEXT_PUBLIC_BACKEND_HOSTNAME,
+      }] : []),
       {
         protocol: 'https',
         hostname: 'ui-avatars.com',
