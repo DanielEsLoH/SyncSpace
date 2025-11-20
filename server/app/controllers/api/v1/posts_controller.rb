@@ -3,8 +3,8 @@ module Api
     class PostsController < ApplicationController
       include Api::V1::PostSerializable
 
-      skip_before_action :authenticate_request, only: [ :index, :show ]
-      before_action :authenticate_optional, only: [ :index, :show ]
+      skip_before_action :authenticate_request, only: [ :index, :show, :popular ]
+      before_action :authenticate_optional, only: [ :index, :show, :popular ]
       before_action :set_post, only: [ :show, :update, :destroy ]
       before_action :authorize_post_owner!, only: [ :update, :destroy ]
 
@@ -45,6 +45,35 @@ module Api
 
         render json: {
           posts: posts.map { |post| serialize_post(post, @current_user) },
+          meta: {
+            current_page: page,
+            per_page: per_page,
+            total_count: total_count,
+            total_pages: (total_count.to_f / per_page).ceil
+          }
+        }, status: :ok
+      end
+
+      # GET /api/v1/posts/popular
+      # Returns posts ordered by engagement (reactions + comments)
+      def popular
+        page = params[:page]&.to_i || 1
+        per_page = [ params[:per_page]&.to_i || 10, 50 ].min
+
+        # Get total count
+        total_count = Post.count
+
+        # Build posts query ordered by engagement (reactions + comments)
+        posts_query = Post.includes({ user: { avatar_attachment: :blob } }, :tags, image_attachment: :blob)
+        posts_query = posts_query.includes(:reactions) if @current_user
+
+        # Order by total engagement (reactions_count + comments_count) descending
+        posts = posts_query.order(Arel.sql("(posts.reactions_count + posts.comments_count) DESC, posts.created_at DESC"))
+                           .offset((page - 1) * per_page)
+                           .limit(per_page)
+
+        render json: {
+          data: posts.map { |post| serialize_post(post, @current_user) },
           meta: {
             current_page: page,
             per_page: per_page,
