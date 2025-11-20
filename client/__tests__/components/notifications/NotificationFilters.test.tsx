@@ -87,8 +87,8 @@ describe('NotificationFilters', () => {
     );
 
     expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute(
-      'data-state',
-      'active'
+      'aria-selected',
+      'true'
     );
 
     rerender(
@@ -100,8 +100,8 @@ describe('NotificationFilters', () => {
     );
 
     expect(screen.getByRole('tab', { name: /unread/i })).toHaveAttribute(
-      'data-state',
-      'active'
+      'aria-selected',
+      'true'
     );
   });
 });

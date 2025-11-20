@@ -26,7 +26,6 @@ const createMockNotification = (overrides: Partial<Notification> = {}): Notifica
     id: 1,
     post_id: 100,
     description: 'This is a test comment',
-    user_id: 2,
   },
   created_at: new Date().toISOString(),
   ...overrides,
@@ -89,7 +88,6 @@ describe('NotificationItem', () => {
           reaction_type: 'love',
           reactionable_type: 'Post',
           reactionable_id: 100,
-          user_id: 2,
         },
       });
       render(
@@ -127,7 +125,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      expect(screen.getByLabelText('Unread')).toBeInTheDocument();
+      expect(screen.getByLabelText('Unread notification')).toBeInTheDocument();
     });
 
     it('does not show unread indicator for read notifications', () => {
@@ -139,7 +137,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      expect(screen.queryByLabelText('Unread')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Unread notification')).not.toBeInTheDocument();
     });
   });
 
@@ -152,7 +150,6 @@ describe('NotificationItem', () => {
           id: 1,
           post_id: 100,
           description: longComment,
-          user_id: 2,
         },
       });
       render(
@@ -173,7 +170,6 @@ describe('NotificationItem', () => {
           id: 1,
           post_id: 100,
           description: longComment,
-          user_id: 2,
         },
       });
       render(
@@ -219,7 +215,7 @@ describe('NotificationItem', () => {
       );
 
       // Get the main notification item (has aria-label)
-      const item = screen.getByLabelText(/John Doe commented on your post/);
+      const item = screen.getByLabelText(/Notification from John Doe/);
       fireEvent.click(item);
 
       expect(mockOnMarkAsRead).toHaveBeenCalledWith(1);
@@ -235,7 +231,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      const item = screen.getByLabelText(/John Doe commented on your post/);
+      const item = screen.getByLabelText(/Notification from John Doe/);
       fireEvent.click(item);
 
       expect(mockOnMarkAsRead).not.toHaveBeenCalled();
@@ -251,7 +247,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      const item = screen.getByLabelText(/John Doe commented on your post/);
+      const item = screen.getByLabelText(/Notification from John Doe/);
       fireEvent.keyDown(item, { key: 'Enter' });
 
       expect(mockOnMarkAsRead).toHaveBeenCalledWith(1);
@@ -267,7 +263,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      const item = screen.getByLabelText(/John Doe commented on your post/);
+      const item = screen.getByLabelText(/Notification from John Doe/);
       fireEvent.keyDown(item, { key: ' ' });
 
       expect(mockOnMarkAsRead).toHaveBeenCalledWith(1);
@@ -286,7 +282,7 @@ describe('NotificationItem', () => {
       );
 
       expect(
-        screen.getByLabelText('John Doe commented on your post. Unread')
+        screen.getByLabelText(/Notification from John Doe.*Unread/)
       ).toBeInTheDocument();
     });
 
@@ -300,7 +296,7 @@ describe('NotificationItem', () => {
       );
 
       expect(
-        screen.getByLabelText('John Doe commented on your post. Read')
+        screen.getByLabelText(/Notification from John Doe.*Press Enter to view/)
       ).toBeInTheDocument();
     });
 
@@ -313,7 +309,7 @@ describe('NotificationItem', () => {
         />
       );
 
-      const item = screen.getByLabelText(/John Doe commented on your post/);
+      const item = screen.getByLabelText(/Notification from John Doe/);
       expect(item).toHaveAttribute('tabIndex', '0');
     });
   });
@@ -322,7 +318,7 @@ describe('NotificationItem', () => {
     const testCases = [
       { type: 'comment_on_post', expectedAction: 'commented on your post' },
       { type: 'reply_to_comment', expectedAction: 'replied to your comment' },
-      { type: 'mention', expectedAction: 'mentioned you' },
+      { type: 'mention', expectedAction: 'mentioned you in a post' },
       { type: 'reaction_on_post', expectedAction: 'reacted to your post' },
       { type: 'reaction_on_comment', expectedAction: 'reacted to your comment' },
     ] as const;
@@ -338,14 +334,12 @@ describe('NotificationItem', () => {
                 reaction_type: 'like',
                 reactionable_type: 'Post',
                 reactionable_id: 100,
-                user_id: 2,
               }
             : {
                 type: 'Comment',
                 id: 1,
                 post_id: 100,
                 description: 'Test',
-                user_id: 2,
               },
         });
         render(

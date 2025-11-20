@@ -45,7 +45,7 @@ describe('NotificationsPageHeader', () => {
     render(<NotificationsPageHeader />);
 
     expect(
-      screen.getByText('Stay updated with your latest activity')
+      screen.getByText('All caught up!')
     ).toBeInTheDocument();
   });
 });
