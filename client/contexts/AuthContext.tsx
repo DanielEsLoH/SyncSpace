@@ -91,6 +91,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(currentUser);
       tokenStorage.setUser(currentUser);
     } catch (error) {
+      // Silent fail for background refresh - user will be redirected on next protected action
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to refresh user:', error);
+      }
     }
   };
 

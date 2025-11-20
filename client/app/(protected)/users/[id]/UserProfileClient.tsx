@@ -6,6 +6,7 @@ import { usersService } from '@/lib/users';
 import { postsService } from '@/lib/posts';
 import { PostCard } from '@/components/posts/PostCard';
 import { EditPostDialog } from '@/components/posts/EditPostDialog';
+import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { useFeedState } from '@/contexts/FeedStateContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import { getInitials } from '@/lib/utils';
 
 interface UserProfileClientProps {
   userId: number;
@@ -42,19 +44,11 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'commented'>('recent');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isEditProfileDialogOpen, setIsEditProfileDialogOpen] = useState(false);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const getInitials = (name: string) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   // Fetch user details
   const fetchUser = useCallback(async () => {
@@ -177,6 +171,12 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
     toast.success('Post updated successfully!');
   };
 
+  // Handle profile updated from dialog
+  const handleProfileUpdated = (updatedUser: User) => {
+    setProfileUser(updatedUser);
+    setIsEditProfileDialogOpen(false);
+  };
+
   // Sort posts
   const sortedPosts = [...posts].sort((a, b) => {
     switch (sortBy) {
@@ -211,9 +211,9 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
   const isMyProfile = currentUser?.id === userId;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-6">
           {/* Profile Header */}
           <Card className="overflow-hidden">
             <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-background" />
@@ -248,7 +248,11 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
                   </div>
                 </div>
                 {isMyProfile && (
-                  <Button variant="outline" className="gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => setIsEditProfileDialogOpen(true)}
+                  >
                     <Edit className="h-4 w-4" />
                     Edit Profile
                   </Button>
@@ -419,6 +423,14 @@ export function UserProfileClient({ userId, profileUser: initialProfileUser }: U
         onOpenChange={setIsEditDialogOpen}
         post={editingPost}
         onPostUpdated={handlePostUpdated}
+      />
+
+      {/* Edit Profile Dialog */}
+      <EditProfileDialog
+        open={isEditProfileDialogOpen}
+        onOpenChange={setIsEditProfileDialogOpen}
+        user={profileUser}
+        onProfileUpdated={handleProfileUpdated}
       />
     </div>
   );

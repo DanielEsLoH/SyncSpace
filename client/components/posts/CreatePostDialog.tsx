@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent } from "react";
+import { TIMING } from "@/lib/constants";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,16 @@ export function CreatePostDialog({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Search tags with debounce
   const searchTags = async (query: string) => {
@@ -59,16 +70,30 @@ export function CreatePostDialog({
       );
       setAvailableTags(filteredTags);
     } catch (error) {
+      // Silent fail for tag search - user can still type custom tags
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to search tags:', error);
+      }
+      setAvailableTags([]);
     } finally {
       setIsLoadingTags(false);
     }
   };
 
-  // Handle tag search input
+  // Handle tag search input with debounce
   const handleTagSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTagSearch(value);
-    searchTags(value);
+
+    // Clear previous timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Debounce the search
+    debounceTimeoutRef.current = setTimeout(() => {
+      searchTags(value);
+    }, TIMING.DEBOUNCE_DELAY);
   };
 
   // Add tag to selected

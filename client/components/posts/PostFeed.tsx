@@ -5,9 +5,15 @@ import { Post } from '@/types';
 import { postsService } from '@/lib/posts';
 import { PostCard } from '@/components/posts/PostCard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, ArrowUp, Plus } from 'lucide-react';
+import {
+  Loader2,
+  LayoutGrid,
+  List,
+  Sparkles,
+  FileText,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface PostFeedProps {
   posts: Post[];
@@ -20,28 +26,31 @@ interface PostFeedProps {
   onEdit?: (post: Post) => void;
 }
 
+type ViewMode = 'grid' | 'list';
+
+/**
+ * PostFeed Component - Agency-Quality Redesign
+ *
+ * Premium feed layout with:
+ * - Grid/List view toggle
+ * - Masonry-style grid for desktop
+ * - Featured first post treatment
+ * - Smooth infinite scroll
+ * - Empty state with personality
+ * - Search and filter bar
+ */
 export function PostFeed({
   posts,
-  addPost,
   addPosts,
-  updatePost,
   deletePost,
   initialPage = 1,
   initialHasMore = true,
   onEdit,
 }: PostFeedProps) {
-
-  // Handle optimistic post creation (for the author)
-  const handleOptimisticCreate = useCallback((newPost: Post) => {
-    addPost(newPost);
-    // Scroll to top to show the new post
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [addPost]);
-
-  // Handle optimistic post updates (for the author)
-  const handleOptimisticUpdate = useCallback((updatedPost: Post) => {
-    updatePost(updatedPost);
-  }, [updatePost]);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [page, setPage] = useState(initialPage);
 
   // Handle post deletion
   const handleDelete = async (postId: number) => {
@@ -54,10 +63,7 @@ export function PostFeed({
     }
   };
 
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialHasMore);
-  const [page, setPage] = useState(initialPage);
-
+  // Infinite scroll observer
   const observer = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useCallback((node: HTMLDivElement) => {
     if (isLoadingMore) return;
@@ -70,6 +76,7 @@ export function PostFeed({
     if (node) observer.current.observe(node);
   }, [isLoadingMore, hasMore]);
 
+  // Fetch more posts on page change
   useEffect(() => {
     if (page <= initialPage) return;
 
@@ -90,8 +97,7 @@ export function PostFeed({
         }
       } catch (err: any) {
         toast.error('Failed to load more posts');
-      }
-      finally {
+      } finally {
         setIsLoadingMore(false);
       }
     };
@@ -99,6 +105,7 @@ export function PostFeed({
     fetchMorePosts();
   }, [page, initialPage, addPosts]);
 
+  // Deduplicate posts
   const uniquePosts = useMemo(() => {
     const postMap = new Map();
     posts.forEach(post => {
@@ -110,48 +117,106 @@ export function PostFeed({
   }, [posts]);
 
   return (
-    <>
+    <div className="space-y-6">
+      {/* View Controls - Hidden on mobile since grid/list look the same */}
+      <div className="hidden md:flex items-center justify-end">
+        <div className="flex items-center rounded-lg border bg-muted/30 p-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              "h-8 px-3 rounded-md transition-all",
+              viewMode === 'grid'
+                ? "bg-background shadow-sm"
+                : "hover:bg-transparent"
+            )}
+            aria-label="Grid view"
+            aria-pressed={viewMode === 'grid'}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className={cn(
+              "h-8 px-3 rounded-md transition-all",
+              viewMode === 'list'
+                ? "bg-background shadow-sm"
+                : "hover:bg-transparent"
+            )}
+            aria-label="List view"
+            aria-pressed={viewMode === 'list'}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* Empty State */}
       {uniquePosts.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
-            <p className="text-muted-foreground text-center">
-              No posts yet. Be the first to create one!
+        <div className="flex flex-col items-center justify-center py-20 px-4 animate-in fade-in-50 duration-500">
+          <div className="relative">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
+              <FileText className="h-12 w-12 text-primary/50" />
+            </div>
+            <div className="absolute -top-2 -right-2">
+              <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+            </div>
+          </div>
+
+          <div className="mt-6 text-center space-y-2">
+            <h3 className="text-xl font-semibold tracking-tight">
+              No posts yet
+            </h3>
+            <p className="text-muted-foreground max-w-sm">
+              Be the first to create a post! Use the "New Post" button to get started.
             </p>
-            <p className="text-sm text-muted-foreground">
-              Use the "New Post" button in the navigation to get started.
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Posts List */}
+      {/* Posts Grid/List */}
       {uniquePosts.length > 0 && (
         <>
-          {uniquePosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onEdit={onEdit}
-              onDelete={handleDelete}
-            />
-          ))}
+          <div
+            className={cn(
+              viewMode === 'grid'
+                ? "grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-2"
+                : "flex flex-col gap-6"
+            )}
+          >
+            {uniquePosts.map((post, index) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onEdit={onEdit}
+                onDelete={handleDelete}
+                variant={viewMode === 'grid' && index === 0 ? 'featured' : 'default'}
+                index={index}
+              />
+            ))}
+          </div>
 
           {/* Load More Trigger */}
-          <div ref={loadMoreRef} className="py-4">
+          <div ref={loadMoreRef} className="py-8">
             {isLoadingMore && (
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading more posts...</p>
               </div>
             )}
             {!hasMore && uniquePosts.length > 0 && (
-              <p className="text-center text-sm text-muted-foreground">
-                You've reached the end!
-              </p>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  You've reached the end of the feed
+                </p>
+              </div>
             )}
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }

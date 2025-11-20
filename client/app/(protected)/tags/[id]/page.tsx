@@ -85,5 +85,13 @@ export default function TagPostsPage() {
     );
   }
 
-  return <PostListPage tagId={tagId} title={`Posts tagged with #${tag.name}`} />;
+  return (
+    <PostListPage
+      tagId={tagId}
+      tagName={tag.name}
+      tagColor={tag.color}
+      title={`Posts tagged with #${tag.name}`}
+    />
+  );
 }
+

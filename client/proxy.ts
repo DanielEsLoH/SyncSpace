@@ -3,20 +3,20 @@ import type { NextRequest } from 'next/server';
 import { LOCALE_COOKIE_NAME, defaultLocale, locales } from './lib/i18n-config';
 
 /**
- * Next.js Middleware with Authentication & Internationalization
+ * Next.js Proxy (formerly Middleware) with Authentication & Internationalization
  *
- * This middleware handles:
+ * This proxy handles:
  * 1. Authentication - Server-side route protection using cookies
  * 2. Internationalization - Locale detection via cookies (no URL prefixes)
  * 3. Security - Proper redirect flows for auth/unauth users
  *
- * IMPORTANT CHANGES:
+ * IMPORTANT:
  * - Locale is now stored in cookies, not in URL paths
  * - All routes are locale-free: /feed, /posts/123, etc.
  * - Locale detection happens via NEXT_LOCALE cookie
  */
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Get authentication token from cookies
@@ -80,9 +80,9 @@ export default function middleware(request: NextRequest) {
 }
 
 /**
- * Matcher configuration for middleware
+ * Matcher configuration for proxy
  *
- * This tells Next.js which routes should trigger the middleware.
+ * This tells Next.js which routes should trigger the proxy.
  * We exclude static files, images, and Next.js internal routes.
  */
 export const config = {

@@ -27,8 +27,9 @@ import {
   FileText,
   TrendingUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { TrendingTagsModal } from "@/components/tags/TrendingTagsModal";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface NavigationProps {
   onCreatePost?: () => void;
@@ -41,15 +42,6 @@ export function Navigation({ onCreatePost }: NavigationProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTrendingModalOpen, setIsTrendingModalOpen] = useState(false);
 
-  const getInitials = (name: string) => {
-    if (!name) return "??";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const navLinks = [
     { href: "/feed", label: "Feed", icon: Home },
@@ -131,6 +123,9 @@ export function Navigation({ onCreatePost }: NavigationProps) {
               <Plus className="h-4 w-4" />
               <span className="hidden lg:inline">New Post</span>
             </Button>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* User Menu */}
             <DropdownMenu>
@@ -267,6 +262,14 @@ export function Navigation({ onCreatePost }: NavigationProps) {
                 <LogOut className="h-4 w-4" />
                 Logout
               </Button>
+            </div>
+
+            {/* Theme Toggle for Mobile */}
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between p-2">
+                <span className="text-sm font-medium">Theme</span>
+                <ThemeToggle />
+              </div>
             </div>
 
             {/* User Info in Mobile Menu */}

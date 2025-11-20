@@ -7,7 +7,7 @@ export const postsService = {
     page?: number;
     per_page?: number;
     search?: string;
-    tag?: string;
+    tag_ids?: number[];
     user_id?: number;
   }): Promise<PostsResponse> {
     const response = await api.get<PostsResponse>('/posts', { params });

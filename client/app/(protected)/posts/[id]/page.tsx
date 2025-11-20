@@ -149,7 +149,7 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     <div className="min-h-screen bg-background">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
           {/* Back Button */}
           <Link href="/feed">
             <Button

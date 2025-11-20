@@ -1,5 +1,4 @@
 import { PostFeedSkeleton } from '@/components/posts/PostFeedSkeleton';
-import { TagsSkeleton } from '@/components/tags/TagsSkeleton';
 
 /**
  * Loading UI for Feed Page
@@ -13,19 +12,11 @@ import { TagsSkeleton } from '@/components/tags/TagsSkeleton';
  */
 export default function FeedLoading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Feed Column */}
-          <div className="lg:col-span-8 space-y-6">
-            <PostFeedSkeleton count={3} />
-          </div>
-
-          {/* Sidebar Column */}
-          <aside className="lg:col-span-4 space-y-6">
-            <TagsSkeleton />
-          </aside>
+        <div className="max-w-5xl mx-auto space-y-6">
+          <PostFeedSkeleton count={3} />
         </div>
       </main>
     </div>
