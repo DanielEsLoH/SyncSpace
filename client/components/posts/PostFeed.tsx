@@ -11,6 +11,8 @@ import {
   List,
   Sparkles,
   FileText,
+  ArrowUp,
+  Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,7 @@ type ViewMode = 'grid' | 'list';
  */
 export function PostFeed({
   posts,
+  addPost,
   addPosts,
   deletePost,
   initialPage = 1,
@@ -51,6 +54,11 @@ export function PostFeed({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [page, setPage] = useState(initialPage);
+
+  // New posts banner state
+  const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const feedTopRef = useRef<HTMLDivElement>(null);
 
   // Handle post deletion
   const handleDelete = async (postId: number) => {
@@ -105,6 +113,61 @@ export function PostFeed({
     fetchMorePosts();
   }, [page, initialPage, addPosts]);
 
+  // Track scroll position to determine if user is at top
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const threshold = 100; // Consider "at top" if within 100px of top
+      setIsAtTop(scrollTop <= threshold);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Listen for new posts from WebSocket
+  useEffect(() => {
+    const handleNewPost = (event: CustomEvent<{ post: Post }>) => {
+      const newPost = event.detail.post;
+
+      // Check if post already exists to avoid duplicates
+      const postExists = posts.some(p => p.id === newPost.id) ||
+                         pendingPosts.some(p => p.id === newPost.id);
+
+      if (postExists) return;
+
+      if (isAtTop) {
+        // User is at top, insert immediately
+        addPost(newPost);
+      } else {
+        // User is scrolled down, add to pending queue
+        setPendingPosts(prev => [newPost, ...prev]);
+      }
+    };
+
+    window.addEventListener('ws:post:new' as any, handleNewPost);
+
+    return () => {
+      window.removeEventListener('ws:post:new' as any, handleNewPost);
+    };
+  }, [isAtTop, posts, pendingPosts, addPost]);
+
+  // Load pending posts when user clicks the banner
+  const loadPendingPosts = useCallback(() => {
+    if (pendingPosts.length === 0) return;
+
+    // Add all pending posts to the feed
+    pendingPosts.forEach(post => addPost(post));
+    setPendingPosts([]);
+
+    // Scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pendingPosts, addPost]);
+
   // Deduplicate posts
   const uniquePosts = useMemo(() => {
     const postMap = new Map();
@@ -118,6 +181,30 @@ export function PostFeed({
 
   return (
     <div className="space-y-6">
+      {/* New Posts Available Banner */}
+      {pendingPosts.length > 0 && (
+        <div className="sticky top-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <Button
+            onClick={loadPendingPosts}
+            className={cn(
+              "w-full gap-2 shadow-lg",
+              "bg-primary hover:bg-primary/90",
+              "border border-primary-foreground/10"
+            )}
+            size="lg"
+          >
+            <Bell className="h-4 w-4 animate-bounce" />
+            <span className="font-semibold">
+              {pendingPosts.length} new {pendingPosts.length === 1 ? 'post' : 'posts'} available
+            </span>
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Feed Top Reference */}
+      <div ref={feedTopRef} />
+
       {/* View Controls - Hidden on mobile since grid/list look the same */}
       <div className="hidden md:flex items-center justify-end">
         <div className="flex items-center rounded-lg border bg-muted/30 p-1">
