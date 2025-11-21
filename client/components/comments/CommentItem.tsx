@@ -70,33 +70,33 @@ export function CommentItem({
   };
 
   return (
-    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-      <Link href={`/users/${comment.user.id}`}>
-        <Avatar className="h-8 w-8">
+    <div className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors">
+      <Link href={`/users/${comment.user.id}`} className="shrink-0">
+        <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
           <AvatarImage
             src={comment.user.profile_picture}
             alt={comment.user.name}
           />
-          <AvatarFallback>{getInitials(comment.user.name)}</AvatarFallback>
+          <AvatarFallback className="text-xs">{getInitials(comment.user.name)}</AvatarFallback>
         </Avatar>
       </Link>
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline space-x-1">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0">
             <Link
               href={`/users/${comment.user.id}`}
-              className="font-semibold text-sm hover:underline"
+              className="font-semibold text-sm hover:underline truncate max-w-[150px] sm:max-w-none"
             >
               {comment.user.name}
             </Link>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               {formatDistanceToNow(comment.created_at)}
             </span>
           </div>
           {isOwner && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0 shrink-0">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -117,47 +117,51 @@ export function CommentItem({
             </DropdownMenu>
           )}
         </div>
-        <p className="text-sm mt-1">{comment.description}</p>
-        <div className="flex items-center space-x-4 mt-2">
+        <p className="text-sm mt-1 break-words">{comment.description}</p>
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onReact?.(comment.id, "like")}
-            className="h-auto p-1 text-xs gap-1"
+            className="h-7 px-1.5 sm:px-2 text-xs gap-1"
+            aria-label="Like"
           >
             <ThumbsUp className="h-3 w-3" />
-            <span>Like</span>
+            <span className="hidden sm:inline">Like</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onReact?.(comment.id, "love")}
-            className="h-auto p-1 text-xs gap-1"
+            className="h-7 px-1.5 sm:px-2 text-xs gap-1"
+            aria-label="Love"
           >
             <Heart className="h-3 w-3" />
-            <span>Love</span>
+            <span className="hidden sm:inline">Love</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onReact?.(comment.id, "dislike")}
-            className="h-auto p-1 text-xs gap-1"
+            className="h-7 px-1.5 sm:px-2 text-xs gap-1"
+            aria-label="Dislike"
           >
             <ThumbsDown className="h-3 w-3" />
-            <span>Dislike</span>
+            <span className="hidden sm:inline">Dislike</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onReply?.(comment)}
-            className="h-auto p-1 text-xs gap-1"
+            className="h-7 px-1.5 sm:px-2 text-xs gap-1"
+            aria-label="Reply"
           >
             <MessageCircle className="h-3 w-3" />
-            <span>Reply</span>
+            <span className="hidden sm:inline">Reply</span>
           </Button>
           {comment.reactions_count > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {comment.reactions_count} Reactions
+            <span className="text-xs text-muted-foreground whitespace-nowrap ml-auto">
+              {comment.reactions_count} {comment.reactions_count === 1 ? 'reaction' : 'reactions'}
             </span>
           )}
         </div>
