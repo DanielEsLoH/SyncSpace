@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
                 </span>
               </Button>
               <Link
-                href="/login"
+                href="/?auth=login"
                 className="text-sm text-primary hover:text-primary/80 flex items-center gap-1.5 mx-auto transition-all duration-200 hover:gap-2 group"
               >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
@@ -173,7 +173,7 @@ export default function ForgotPasswordPage() {
                 className="w-full h-11 gap-2 group relative overflow-hidden"
                 variant="outline"
               >
-                <Link href="/login">
+                <Link href="/?auth=login">
                   <div className="absolute inset-0 bg-linear-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                   <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
                   <span>Return to Login</span>

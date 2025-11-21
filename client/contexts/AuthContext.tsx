@@ -81,8 +81,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Disconnect WebSocket
     wsClient.disconnect();
 
-    // Redirect to login
-    router.push('/login');
+    // Redirect to landing page with login modal
+    router.push('/?auth=login');
   };
 
   const refreshUser = async () => {

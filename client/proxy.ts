@@ -30,8 +30,6 @@ export default function proxy(request: NextRequest) {
 
   // Define public routes (accessible without authentication)
   const publicPaths = [
-    '/login',
-    '/register',
     '/forgot-password',
     '/reset-password',
     '/confirm-email',
@@ -52,11 +50,12 @@ export default function proxy(request: NextRequest) {
   if (token && isPublicPath && !isHomePage) {
     response = NextResponse.redirect(new URL('/feed', request.url));
   }
-  // Redirect unauthenticated users to login (except public paths and home)
+  // Redirect unauthenticated users to landing page with login modal (except public paths and home)
   else if (!token && !isPublicPath && !isHomePage) {
-    const redirectUrl = new URL('/login', request.url);
-    // Store the intended destination for post-login redirect
-    redirectUrl.searchParams.set('callbackUrl', pathname);
+    const redirectUrl = new URL('/', request.url);
+    // Open login modal and store the intended destination for post-login redirect
+    redirectUrl.searchParams.set('auth', 'login');
+    redirectUrl.searchParams.set('redirect', pathname);
     response = NextResponse.redirect(redirectUrl);
   }
   // Allow the request to proceed

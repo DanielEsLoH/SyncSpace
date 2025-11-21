@@ -88,7 +88,7 @@ export default function ResetPasswordPage({ params }: ResetPasswordPageProps) {
         }, 1000);
       } else {
         toast.success('Password reset successfully!');
-        router.push('/login');
+        router.push('/?auth=login');
       }
     } catch (error: any) {
       const errorMessage =

@@ -22,7 +22,7 @@ export default async function FeedPage() {
   const { auth, postsData } = await getInitialData();
 
   if (!auth.isAuthenticated) {
-    redirect('/login');
+    redirect('/?auth=login');
   }
 
   const hasMore = postsData.meta

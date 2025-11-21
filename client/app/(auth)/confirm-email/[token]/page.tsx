@@ -110,7 +110,7 @@ export default function ConfirmEmailPage({ params }: ConfirmEmailPageProps) {
                   </p>
                   <p className="text-sm text-muted-foreground">{error}</p>
                 </div>
-                <Button onClick={() => router.push('/login')} className="mt-4">
+                <Button onClick={() => router.push('/?auth=login')} className="mt-4">
                   Go to Login
                 </Button>
               </div>

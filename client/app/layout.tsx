@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthModalProvider } from '@/contexts/AuthModalContext';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { Toaster } from '@/components/ui/sonner';
 import "./globals.css";
@@ -78,10 +79,12 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              <NotificationsProvider>
-                {children}
-                <Toaster />
-              </NotificationsProvider>
+              <AuthModalProvider>
+                <NotificationsProvider>
+                  {children}
+                  <Toaster />
+                </NotificationsProvider>
+              </AuthModalProvider>
             </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

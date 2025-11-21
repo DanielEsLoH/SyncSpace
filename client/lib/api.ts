@@ -36,8 +36,8 @@ api.interceptors.response.use(
       if (typeof window !== 'undefined') {
         Cookies.remove('syncspace_token');
         Cookies.remove('syncspace_user');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        if (window.location.pathname !== '/') {
+          window.location.href = '/?auth=login';
         }
       }
     }

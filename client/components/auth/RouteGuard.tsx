@@ -33,11 +33,11 @@ export function RouteGuard({
     if (isLoading) return;
 
     if (requireAuth && !isAuthenticated) {
-      // User must be authenticated but isn't - redirect to login
-      const redirect = redirectTo || `/login?redirect=${encodeURIComponent(pathname)}`;
+      // User must be authenticated but isn't - redirect to landing page with auth modal
+      const redirect = redirectTo || `/?auth=login&redirect=${encodeURIComponent(pathname)}`;
       router.push(redirect);
     } else if (!requireAuth && isAuthenticated) {
-      // User is authenticated but shouldn't be (e.g., on login page) - redirect to home
+      // User is authenticated but shouldn't be - redirect to feed
       const redirect = redirectTo || '/feed';
       router.push(redirect);
     }

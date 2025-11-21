@@ -1,111 +1,57 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { postsService } from '@/lib/posts';
-import { Post } from '@/types';
-import { PostCard } from '@/components/posts/PostCard';
+import { useAuthModal } from '@/contexts/AuthModalContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Loader2,
   LogIn,
   UserPlus,
-  Sparkles,
-  TrendingUp,
-  Users,
-  MessageSquare,
   Zap,
+  MessageSquare,
+  Heart,
+  Bell,
+  Users,
+  Globe,
+  Shield,
+  Rocket,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function HomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { openLoginModal, openRegisterModal } = useAuthModal();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-
-  const observer = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useCallback((node: HTMLDivElement) => {
-    if (isLoadingMore) return;
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage(prevPage => prevPage + 1);
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [isLoadingMore, hasMore]);
+  // Handle auth query parameter to auto-open modals
+  useEffect(() => {
+    const authParam = searchParams.get('auth');
+    if (authParam === 'login') {
+      openLoginModal();
+      // Clean up the URL without triggering a navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete('auth');
+      window.history.replaceState({}, '', url.toString());
+    } else if (authParam === 'register') {
+      openRegisterModal();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('auth');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams, openLoginModal, openRegisterModal]);
 
   // Redirect authenticated users to feed
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push('/feed');
+      // Check if there's a redirect parameter
+      const redirectPath = searchParams.get('redirect');
+      router.push(redirectPath || '/feed');
     }
-  }, [isAuthenticated, authLoading, router]);
-
-  // Fetch popular posts for unauthenticated users
-  useEffect(() => {
-    if (authLoading || isAuthenticated) return;
-
-    const fetchPopularPosts = async () => {
-      try {
-        setIsLoading(true);
-        const response = await postsService.getPopularPosts({
-          page: 1,
-          per_page: 10,
-        });
-        setPosts(response.data || []);
-        if (response.meta) {
-          setHasMore(response.meta.current_page < response.meta.total_pages);
-        } else {
-          setHasMore(false);
-        }
-      } catch (err: any) {
-        setError('Failed to load posts');
-        console.error('Error fetching popular posts:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPopularPosts();
-  }, [authLoading, isAuthenticated]);
-
-  // Load more posts on page change
-  useEffect(() => {
-    if (page <= 1 || authLoading || isAuthenticated) return;
-
-    const fetchMorePosts = async () => {
-      setIsLoadingMore(true);
-      try {
-        const response = await postsService.getPopularPosts({
-          page,
-          per_page: 10,
-        });
-
-        setPosts(prev => [...prev, ...(response.data || [])]);
-
-        if (response.meta) {
-          setHasMore(response.meta.current_page < response.meta.total_pages);
-        } else {
-          setHasMore(false);
-        }
-      } catch (err: any) {
-        console.error('Error loading more posts:', err);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    };
-
-    fetchMorePosts();
-  }, [page, authLoading, isAuthenticated]);
+  }, [isAuthenticated, authLoading, router, searchParams]);
 
   // Show loading while checking auth
   if (authLoading) {
@@ -125,61 +71,163 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-        <div className="container mx-auto px-4 py-16 md:py-24 relative">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-primary/5" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+
+        <div className="container mx-auto px-4 py-20 md:py-32 relative">
           <div className="max-w-4xl mx-auto text-center space-y-8">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary">
+              <Rocket className="h-4 w-4" />
+              Welcome to the future of social
+            </div>
+
             {/* Logo/Brand */}
-            <div className="flex items-center justify-center gap-3">
-              <div className="p-3 rounded-2xl bg-primary/10">
-                <Zap className="h-10 w-10 text-primary" />
+            <div className="flex items-center justify-center gap-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/25">
+                <Zap className="h-12 w-12 text-primary-foreground" />
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                 SyncSpace
               </h1>
             </div>
 
             {/* Tagline */}
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Share ideas, discuss topics, and react in real-time with a modern community platform.
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Connect, share, and engage with a community that moves at the speed of your ideas.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="gap-2 px-8 h-12 text-base">
-                <Link href="/register">
-                  <UserPlus className="h-5 w-5" />
-                  Get Started
-                </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Button
+                size="lg"
+                className="gap-2 px-8 h-14 text-base font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
+                onClick={openRegisterModal}
+              >
+                <UserPlus className="h-5 w-5" />
+                Get Started Free
+                <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
-              <Button asChild variant="outline" size="lg" className="gap-2 px-8 h-12 text-base">
-                <Link href="/login">
-                  <LogIn className="h-5 w-5" />
-                  Sign In
-                </Link>
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2 px-8 h-14 text-base font-semibold"
+                onClick={openLoginModal}
+              >
+                <LogIn className="h-5 w-5" />
+                Sign In
               </Button>
             </div>
 
-            {/* Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8">
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardContent className="p-4 text-center">
-                  <TrendingUp className="h-6 w-6 mx-auto mb-2 text-primary" />
-                  <p className="text-sm font-medium">Trending Posts</p>
+            {/* Trust Indicators */}
+            <div className="flex items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                Free to use
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                No ads
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                Real-time sync
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            {/* Section Header */}
+            <div className="text-center space-y-4 mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+                Everything you need to connect
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Powerful features designed to help you share ideas, build relationships, and stay in sync.
+              </p>
+            </div>
+
+            {/* Features Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <MessageSquare className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Rich Discussions</h3>
+                  <p className="text-muted-foreground">
+                    Engage in meaningful conversations with nested comments and threaded replies.
+                  </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardContent className="p-4 text-center">
-                  <Users className="h-6 w-6 mx-auto mb-2 text-primary" />
-                  <p className="text-sm font-medium">Community</p>
+
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <Heart className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Expressive Reactions</h3>
+                  <p className="text-muted-foreground">
+                    Show your appreciation with multiple reaction types on posts and comments.
+                  </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-                <CardContent className="p-4 text-center">
-                  <MessageSquare className="h-6 w-6 mx-auto mb-2 text-primary" />
-                  <p className="text-sm font-medium">Real-time Chat</p>
+
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <Bell className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Real-time Updates</h3>
+                  <p className="text-muted-foreground">
+                    Stay informed with instant notifications and live feed updates.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">User Profiles</h3>
+                  <p className="text-muted-foreground">
+                    Customize your profile, track your activity, and build your presence.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <Globe className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Tag Discovery</h3>
+                  <p className="text-muted-foreground">
+                    Find content that matters with organized tags and powerful search.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div className="p-3 rounded-xl bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
+                    <Shield className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">Secure Platform</h3>
+                  <p className="text-muted-foreground">
+                    Your data is protected with modern authentication and security practices.
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -187,127 +235,108 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Popular Posts Section */}
-      <section className="container mx-auto px-4 py-12">
-        <div className="max-w-5xl mx-auto">
-          {/* Section Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Sparkles className="h-5 w-5 text-primary" />
+      {/* How It Works Section */}
+      <section className="py-20 md:py-28 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            {/* Section Header */}
+            <div className="text-center space-y-4 mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+                Get started in minutes
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Join the community in three simple steps
+              </p>
+            </div>
+
+            {/* Steps */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto">
+                  1
+                </div>
+                <h3 className="text-lg font-semibold">Create Account</h3>
+                <p className="text-muted-foreground text-sm">
+                  Sign up with your email and set up your profile in seconds.
+                </p>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">Popular Posts</h2>
-                <p className="text-sm text-muted-foreground">
-                  Discover what's trending in the community
+
+              <div className="text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto">
+                  2
+                </div>
+                <h3 className="text-lg font-semibold">Share Content</h3>
+                <p className="text-muted-foreground text-sm">
+                  Create posts, add images, and tag your content for discovery.
+                </p>
+              </div>
+
+              <div className="text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto">
+                  3
+                </div>
+                <h3 className="text-lg font-semibold">Engage & Connect</h3>
+                <p className="text-muted-foreground text-sm">
+                  React, comment, and build relationships with the community.
                 </p>
               </div>
             </div>
-            <Button asChild variant="outline" size="sm" className="hidden sm:flex">
-              <Link href="/register">
-                Join to interact
-              </Link>
-            </Button>
           </div>
-
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground">Loading popular posts...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && !isLoading && (
-            <div className="text-center py-20">
-              <p className="text-destructive mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>
-                Try Again
-              </Button>
-            </div>
-          )}
-
-          {/* Posts Grid */}
-          {!isLoading && !error && posts.length > 0 && (
-            <>
-              <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
-                {posts.map((post, index) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    variant={index === 0 ? 'featured' : 'default'}
-                    index={index}
-                  />
-                ))}
-              </div>
-
-              {/* Load More Trigger */}
-              <div ref={loadMoreRef} className="py-8">
-                {isLoadingMore && (
-                  <div className="flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Loading more posts...</p>
-                  </div>
-                )}
-                {!hasMore && posts.length > 0 && (
-                  <div className="text-center space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      You've seen all popular posts
-                    </p>
-                    <Button asChild>
-                      <Link href="/register">
-                        Sign up to see more
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && !error && posts.length === 0 && (
-            <div className="text-center py-20">
-              <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Be the first to share something with the community!
-              </p>
-              <Button asChild>
-                <Link href="/register">
-                  Create an account
-                </Link>
-              </Button>
-            </div>
-          )}
         </div>
       </section>
 
       {/* Bottom CTA */}
-      <section className="border-t bg-muted/30">
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-2xl mx-auto text-center space-y-6">
-            <h3 className="text-2xl font-bold">Ready to join the conversation?</h3>
-            <p className="text-muted-foreground">
-              Create an account to post, comment, and react to content.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="gap-2">
-                <Link href="/register">
-                  <UserPlus className="h-5 w-5" />
-                  Create Account
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="lg">
-                <Link href="/login">
-                  Already have an account? Sign in
-                </Link>
-              </Button>
-            </div>
+      <section className="py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto">
+            <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20 overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <CardContent className="p-8 md:p-12 text-center space-y-6 relative">
+                <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold">
+                  Ready to join the conversation?
+                </h3>
+                <p className="text-muted-foreground max-w-lg mx-auto">
+                  Create your free account today and start connecting with a community that values meaningful interactions.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                  <Button
+                    size="lg"
+                    className="gap-2 px-8 h-12 font-semibold"
+                    onClick={openRegisterModal}
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    Create Free Account
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="gap-2 h-12"
+                    onClick={openLoginModal}
+                  >
+                    Already a member? Sign in
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="font-semibold">SyncSpace</span>
+            </div>
+            <p>© {new Date().getFullYear()} SyncSpace. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

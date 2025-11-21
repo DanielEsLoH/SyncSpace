@@ -31,10 +31,10 @@ export default function ProtectedLayout({
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect to login if not authenticated
+  // Redirect to landing page with login modal if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push('/?auth=login');
     }
   }, [isAuthenticated, isLoading, router]);
 
