@@ -111,15 +111,6 @@ export const postsService = {
     const response = await api.get<PaginatedResponse<Post>>(`/users/${userId}/posts`, { params });
     return response.data;
   },
-
-  // Get popular posts (for unauthenticated users)
-  async getPopularPosts(params?: {
-    page?: number;
-    per_page?: number;
-  }): Promise<PaginatedResponse<Post>> {
-    const response = await api.get<PaginatedResponse<Post>>('/posts/popular', { params });
-    return response.data;
-  },
 };
 
 export default postsService;

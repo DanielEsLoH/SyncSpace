@@ -19,9 +19,6 @@ Rails.application.routes.draw do
 
       # Posts
       resources :posts do
-        collection do
-          get "popular"
-        end
         # Comments on posts
         resources :comments, only: [ :index, :create ]
         # Reactions on posts
