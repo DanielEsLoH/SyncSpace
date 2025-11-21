@@ -53,9 +53,8 @@ export default function proxy(request: NextRequest) {
   // Redirect unauthenticated users to landing page with login modal (except public paths and home)
   else if (!token && !isPublicPath && !isHomePage) {
     const redirectUrl = new URL('/', request.url);
-    // Open login modal and store the intended destination for post-login redirect
+    // Open login modal
     redirectUrl.searchParams.set('auth', 'login');
-    redirectUrl.searchParams.set('redirect', pathname);
     response = NextResponse.redirect(redirectUrl);
   }
   // Allow the request to proceed

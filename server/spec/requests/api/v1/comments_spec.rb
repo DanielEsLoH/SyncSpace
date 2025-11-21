@@ -429,7 +429,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
           expect(response).to have_http_status(:created)
 
           mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
-          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(mention_notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2 ])
           expect(mention_notifications.all? { |n| n.actor == user }).to be true
           expect(mention_notifications.all? { |n| n.notifiable_type == 'Comment' }).to be true
         end
@@ -471,7 +471,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
 
           notifications = Notification.where(user: post_owner).order(created_at: :desc).limit(2)
           notification_types = notifications.map(&:notification_type)
-          expect(notification_types).to match_array(['comment_on_post', 'mention'])
+          expect(notification_types).to match_array([ 'comment_on_post', 'mention' ])
         end
       end
 
@@ -512,7 +512,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
           }.to change(Notification, :count).by(4) # 3 mentions + 1 comment_on_post
 
           mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(3)
-          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+          expect(mention_notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2, mentioned_user3 ])
         end
       end
     end
@@ -536,7 +536,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
           }.to change(Notification, :count).by(3) # 2 mentions + 1 reply_to_comment
 
           mention_notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
-          expect(mention_notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(mention_notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2 ])
         end
       end
 
@@ -556,7 +556,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
 
           notifications = Notification.where(user: other_user).order(created_at: :desc).limit(2)
           notification_types = notifications.map(&:notification_type)
-          expect(notification_types).to match_array(['reply_to_comment', 'mention'])
+          expect(notification_types).to match_array([ 'reply_to_comment', 'mention' ])
         end
       end
     end
@@ -683,7 +683,7 @@ RSpec.describe 'Api::V1::Comments', type: :request do
         # Verify all mention notifications were created
         mention_notifications = Notification.where(notification_type: 'mention')
         mentioned_users = mention_notifications.map(&:user).uniq
-        expect(mentioned_users).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+        expect(mentioned_users).to match_array([ mentioned_user1, mentioned_user2, mentioned_user3 ])
       end
     end
   end

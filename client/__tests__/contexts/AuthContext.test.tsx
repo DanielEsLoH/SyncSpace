@@ -143,6 +143,6 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
     expect(screen.queryByTestId('user-name')).toBeNull();
     expect(mockedWsClient.disconnect).toHaveBeenCalled();
-    expect(mockRouterPush).toHaveBeenCalledWith('/login');
+    expect(mockRouterPush).toHaveBeenCalledWith('/?auth=login');
   });
 });

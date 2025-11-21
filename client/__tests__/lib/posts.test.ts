@@ -148,21 +148,6 @@ describe('postsService', () => {
     });
   });
 
-  // getPopularPosts
-  describe('getPopularPosts', () => {
-    it('should fetch popular posts successfully', async () => {
-      const mockResponse: PaginatedResponse<Post> = {
-        data: [mockPost],
-        meta: { total_pages: 1, current_page: 1, per_page: 10, total_count: 1 },
-      };
-      mockedApi.get.mockResolvedValue({ data: mockResponse });
-      const params = { page: 1, per_page: 10 };
-      const result = await postsService.getPopularPosts(params);
-      expect(mockedApi.get).toHaveBeenCalledWith('/posts/popular', { params });
-      expect(result).toEqual(mockResponse);
-    });
-  });
-
   // Error handling
   describe('Error Handling', () => {
     it('should handle API errors for all methods', async () => {
@@ -182,7 +167,6 @@ describe('postsService', () => {
         await expect(postsService.getPostReactions(1)).rejects.toThrow('API Error');
         await expect(postsService.getMyPosts()).rejects.toThrow('API Error');
         await expect(postsService.getUserPosts(1)).rejects.toThrow('API Error');
-        await expect(postsService.getPopularPosts()).rejects.toThrow('API Error');
     });
   });
 });

@@ -5,5 +5,5 @@ SibApiV3Sdk.configure do |config|
 end
 
 # Register Brevo delivery method
-require_dependency Rails.root.join('lib', 'brevo_delivery').to_s
+require_dependency Rails.root.join("lib", "brevo_delivery").to_s
 ActionMailer::Base.add_delivery_method :brevo, BrevoDelivery

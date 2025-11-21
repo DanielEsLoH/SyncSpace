@@ -11,68 +11,68 @@ RSpec.describe MentionService, type: :service do
       it 'extracts single username mention' do
         text = 'Hey @john_doe check this out'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john_doe'])
+        expect(mentions).to eq([ 'john_doe' ])
       end
 
       it 'extracts multiple username mentions' do
         text = 'Hey @john_doe and @jane_smith, look at this!'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['john_doe', 'jane_smith'])
+        expect(mentions).to match_array([ 'john_doe', 'jane_smith' ])
       end
 
       it 'extracts username at start of text' do
         text = '@john_doe this is for you'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john_doe'])
+        expect(mentions).to eq([ 'john_doe' ])
       end
 
       it 'extracts username at end of text' do
         text = 'This is for @john_doe'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john_doe'])
+        expect(mentions).to eq([ 'john_doe' ])
       end
 
       it 'extracts username with underscores' do
         text = 'Hey @user_name_123 check this'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['user_name_123'])
+        expect(mentions).to eq([ 'user_name_123' ])
       end
 
       it 'extracts username with numbers' do
         text = 'Mentioning @user123 here'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['user123'])
+        expect(mentions).to eq([ 'user123' ])
       end
 
       it 'respects minimum length of 3 characters' do
         text = 'Hey @ab and @abc'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['abc'])
+        expect(mentions).to eq([ 'abc' ])
       end
 
       it 'respects maximum length of 30 characters' do
         long_username = 'a' * 31
         text = "Hey @#{long_username} and @validuser"
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['validuser'])
+        expect(mentions).to eq([ 'validuser' ])
       end
 
       it 'handles username followed by punctuation' do
         text = 'Hey @john_doe, how are you? @jane_smith!'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['john_doe', 'jane_smith'])
+        expect(mentions).to match_array([ 'john_doe', 'jane_smith' ])
       end
 
       it 'handles username in middle of sentence' do
         text = 'I think @john_doe knows about this'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john_doe'])
+        expect(mentions).to eq([ 'john_doe' ])
       end
 
       it 'removes duplicate username mentions' do
         text = '@john_doe please help @john_doe'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john_doe'])
+        expect(mentions).to eq([ 'john_doe' ])
       end
     end
 
@@ -80,43 +80,43 @@ RSpec.describe MentionService, type: :service do
       it 'extracts single email mention' do
         text = 'Hey @john@example.com check this'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john@example.com'])
+        expect(mentions).to eq([ 'john@example.com' ])
       end
 
       it 'extracts multiple email mentions' do
         text = 'CC @john@example.com and @jane@test.com'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['john@example.com', 'jane@test.com'])
+        expect(mentions).to match_array([ 'john@example.com', 'jane@test.com' ])
       end
 
       it 'extracts email with subdomain' do
         text = '@user@mail.example.com please review'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['user@mail.example.com'])
+        expect(mentions).to eq([ 'user@mail.example.com' ])
       end
 
       it 'extracts email with plus sign' do
         text = '@john+tag@example.com check this'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john+tag@example.com'])
+        expect(mentions).to eq([ 'john+tag@example.com' ])
       end
 
       it 'extracts email with dots in local part' do
         text = '@john.doe@example.com please see'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john.doe@example.com'])
+        expect(mentions).to eq([ 'john.doe@example.com' ])
       end
 
       it 'extracts email with numbers' do
         text = '@user123@example.com check this'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['user123@example.com'])
+        expect(mentions).to eq([ 'user123@example.com' ])
       end
 
       it 'removes duplicate email mentions' do
         text = '@john@example.com and @john@example.com'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to eq(['john@example.com'])
+        expect(mentions).to eq([ 'john@example.com' ])
       end
     end
 
@@ -124,13 +124,13 @@ RSpec.describe MentionService, type: :service do
       it 'extracts both username and email mentions' do
         text = 'Hey @john_doe and @jane@example.com'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['john_doe', 'jane@example.com'])
+        expect(mentions).to match_array([ 'john_doe', 'jane@example.com' ])
       end
 
       it 'handles multiple of each type' do
         text = '@user1 @user2 and @email1@test.com @email2@test.com'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['user1', 'user2', 'email1@test.com', 'email2@test.com'])
+        expect(mentions).to match_array([ 'user1', 'user2', 'email1@test.com', 'email2@test.com' ])
       end
     end
 
@@ -165,13 +165,13 @@ RSpec.describe MentionService, type: :service do
       it 'handles mentions in multiline text' do
         text = "First line with @user1\nSecond line with @user2\nThird line with @user3"
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['user1', 'user2', 'user3'])
+        expect(mentions).to match_array([ 'user1', 'user2', 'user3' ])
       end
 
       it 'handles mentions with special characters nearby' do
         text = '(@john_doe) [@jane_smith] {@bob_wilson}'
         mentions = MentionService.extract_mentions(text)
-        expect(mentions).to match_array(['john_doe', 'jane_smith', 'bob_wilson'])
+        expect(mentions).to match_array([ 'john_doe', 'jane_smith', 'bob_wilson' ])
       end
     end
   end
@@ -185,85 +185,85 @@ RSpec.describe MentionService, type: :service do
 
     context 'with email mentions' do
       it 'finds user by email' do
-        mentions = ['john@example.com']
+        mentions = [ 'john@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user1])
+        expect(users).to eq([ user1 ])
       end
 
       it 'finds multiple users by email' do
-        mentions = ['john@example.com', 'jane@example.com']
+        mentions = [ 'john@example.com', 'jane@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to match_array([user1, user2])
+        expect(users).to match_array([ user1, user2 ])
       end
 
       it 'returns empty array for non-existent email' do
-        mentions = ['nonexistent@example.com']
+        mentions = [ 'nonexistent@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
         expect(users).to eq([])
       end
 
       it 'finds only existing users when some emails do not exist' do
-        mentions = ['john@example.com', 'nonexistent@example.com', 'jane@example.com']
+        mentions = [ 'john@example.com', 'nonexistent@example.com', 'jane@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to match_array([user1, user2])
+        expect(users).to match_array([ user1, user2 ])
       end
     end
 
     context 'with username mentions' do
       it 'finds user by name (case-insensitive)' do
-        mentions = ['john']
+        mentions = [ 'john' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user1])
+        expect(users).to eq([ user1 ])
       end
 
       it 'finds user with exact case match' do
-        mentions = ['jane_smith']
+        mentions = [ 'jane_smith' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user2])
+        expect(users).to eq([ user2 ])
       end
 
       it 'finds user with different case' do
-        mentions = ['JANE_SMITH']
+        mentions = [ 'JANE_SMITH' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user2])
+        expect(users).to eq([ user2 ])
       end
 
       it 'finds user with mixed case' do
-        mentions = ['JaNe_SmItH']
+        mentions = [ 'JaNe_SmItH' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user2])
+        expect(users).to eq([ user2 ])
       end
 
       it 'finds multiple users by username' do
-        mentions = ['john', 'jane_smith']
+        mentions = [ 'john', 'jane_smith' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to match_array([user1, user2])
+        expect(users).to match_array([ user1, user2 ])
       end
 
       it 'returns empty array for non-existent username' do
-        mentions = ['nonexistentuser']
+        mentions = [ 'nonexistentuser' ]
         users = MentionService.find_mentioned_users(mentions)
         expect(users).to eq([])
       end
 
       it 'finds user by partial name match (first name only)' do
-        mentions = ['bob']
+        mentions = [ 'bob' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user3])
+        expect(users).to eq([ user3 ])
       end
     end
 
     context 'with mixed mentions' do
       it 'finds users by both email and username' do
-        mentions = ['john', 'jane@example.com']
+        mentions = [ 'john', 'jane@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to match_array([user1, user2])
+        expect(users).to match_array([ user1, user2 ])
       end
 
       it 'removes duplicate users' do
-        mentions = ['john', 'john@example.com']
+        mentions = [ 'john', 'john@example.com' ]
         users = MentionService.find_mentioned_users(mentions)
-        expect(users).to eq([user1])
+        expect(users).to eq([ user1 ])
       end
     end
 
@@ -274,7 +274,7 @@ RSpec.describe MentionService, type: :service do
       end
 
       it 'handles mentions with whitespace' do
-        mentions = [' john ', ' jane@example.com ']
+        mentions = [ ' john ', ' jane@example.com ' ]
         users = MentionService.find_mentioned_users(mentions)
         # This might fail depending on implementation - adjust if needed
         expect(users.length).to be >= 0
@@ -304,7 +304,7 @@ RSpec.describe MentionService, type: :service do
         }.to change(Notification, :count).by(2)
 
         notifications = Notification.where(notification_type: 'mention', notifiable: post_record)
-        expect(notifications.map(&:user)).to match_array([user1, user2])
+        expect(notifications.map(&:user)).to match_array([ user1, user2 ])
       end
 
       it 'searches mentions in both title and description for posts' do
@@ -319,7 +319,7 @@ RSpec.describe MentionService, type: :service do
 
         notifications = MentionService.create_mention_notifications(post_with_title_mention, post_owner)
         expect(notifications.length).to eq(2)
-        expect(notifications.map(&:user)).to match_array([alice, bob])
+        expect(notifications.map(&:user)).to match_array([ alice, bob ])
       end
 
       it 'sets correct notification attributes' do
@@ -496,7 +496,7 @@ RSpec.describe MentionService, type: :service do
       notifications = MentionService.process_mentions(post_with_mentions, post_owner)
 
       expect(notifications.length).to eq(3)
-      expect(notifications.map(&:user)).to match_array([user1, user2, user3])
+      expect(notifications.map(&:user)).to match_array([ user1, user2, user3 ])
       expect(notifications.all? { |n| n.notification_type == 'mention' }).to be true
       expect(notifications.all? { |n| n.actor == post_owner }).to be true
       expect(notifications.all? { |n| n.notifiable == post_with_mentions }).to be true
@@ -513,7 +513,7 @@ RSpec.describe MentionService, type: :service do
       notifications = MentionService.process_mentions(comment_with_mentions, user1)
 
       expect(notifications.length).to eq(2)
-      expect(notifications.map(&:user)).to match_array([user2, user3])
+      expect(notifications.map(&:user)).to match_array([ user2, user3 ])
       expect(notifications.all? { |n| n.notification_type == 'mention' }).to be true
       expect(notifications.all? { |n| n.actor == user1 }).to be true
       expect(notifications.all? { |n| n.notifiable == comment_with_mentions }).to be true

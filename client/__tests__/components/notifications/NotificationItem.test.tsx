@@ -27,7 +27,7 @@ const createMockNotification = (overrides: Partial<Notification> = {}): Notifica
     post_id: 100,
     description: 'This is a test comment',
   },
-  created_at: new Date().toISOString(),
+  created_at: '2025-01-15T10:30:00Z',
   ...overrides,
 });
 

@@ -11,8 +11,17 @@ RSpec.describe 'Api::V1::Posts', type: :request do
     let!(:other_posts) { create_list(:post, 5, user: other_user, title: 'Other Post', description: 'Other Description for post') }
 
     context 'without authentication' do
-      it 'returns all posts with default pagination' do
+      it 'returns 401 unauthorized' do
         get '/api/v1/posts'
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response[:error]).to eq('Unauthorized')
+      end
+    end
+
+    context 'with authentication' do
+      it 'returns all posts with default pagination' do
+        get '/api/v1/posts', headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:posts].size).to eq(10) # default per_page
@@ -29,7 +38,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post = posts.last
         post.tags << tag1
 
-        get '/api/v1/posts'
+        get '/api/v1/posts', headers: auth_headers(user)
 
         post_response = json_response[:posts].find { |p| p[:id] == post.id }
         expect(post_response).to include(
@@ -51,7 +60,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     context 'with pagination' do
       it 'returns specified page and per_page' do
-        get '/api/v1/posts', params: { page: 2, per_page: 5 }
+        get '/api/v1/posts', params: { page: 2, per_page: 5 }, headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:posts].size).to eq(5)
@@ -64,14 +73,14 @@ RSpec.describe 'Api::V1::Posts', type: :request do
       end
 
       it 'limits per_page to maximum of 50' do
-        get '/api/v1/posts', params: { per_page: 100 }
+        get '/api/v1/posts', params: { per_page: 100 }, headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:meta][:per_page]).to eq(50)
       end
 
       it 'returns empty array for page beyond total pages' do
-        get '/api/v1/posts', params: { page: 100 }
+        get '/api/v1/posts', params: { page: 100 }, headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:posts]).to eq([])
@@ -80,7 +89,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     context 'with user_id filter' do
       it 'returns only posts from specified user' do
-        get '/api/v1/posts', params: { user_id: user.id }
+        get '/api/v1/posts', params: { user_id: user.id }, headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:posts].size).to eq(10)
@@ -92,7 +101,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
       it 'returns empty array for user with no posts' do
         new_user = create_confirmed_user
-        get '/api/v1/posts', params: { user_id: new_user.id }
+        get '/api/v1/posts', params: { user_id: new_user.id }, headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:posts]).to eq([])
@@ -111,7 +120,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         end
         create_list(:comment, 5, commentable: post, user: other_user, description: 'Test comment')
 
-        get '/api/v1/posts'
+        get '/api/v1/posts', headers: auth_headers(user)
 
         post_response = json_response[:posts].find { |p| p[:id] == post.id }
         expect(post_response[:reactions_count]).to eq(3)
@@ -123,7 +132,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
         post = posts.last
         comments = create_list(:comment, 5, commentable: post, user: other_user, description: 'Test comment')
 
-        get '/api/v1/posts'
+        get '/api/v1/posts', headers: auth_headers(user)
 
         post_response = json_response[:posts].find { |p| p[:id] == post.id }
         expect(post_response[:last_three_comments].size).to eq(3)
@@ -133,10 +142,111 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     context 'ordering' do
       it 'returns posts ordered by created_at desc' do
-        get '/api/v1/posts'
+        get '/api/v1/posts', headers: auth_headers(user)
 
         timestamps = json_response[:posts].map { |p| Time.parse(p[:created_at]) }
         expect(timestamps).to eq(timestamps.sort.reverse)
+      end
+    end
+
+    context 'with search parameter' do
+      it 'filters posts by title' do
+        searchable_post = create(:post, user: user, title: 'Unique Searchable Title', description: 'Some description here')
+
+        get '/api/v1/posts', params: { search: 'Unique Searchable' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts].size).to eq(1)
+        expect(json_response[:posts].first[:id]).to eq(searchable_post.id)
+      end
+
+      it 'filters posts by description' do
+        searchable_post = create(:post, user: user, title: 'Regular Title', description: 'Very unique description content')
+
+        get '/api/v1/posts', params: { search: 'unique description' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts].size).to eq(1)
+        expect(json_response[:posts].first[:id]).to eq(searchable_post.id)
+      end
+
+      it 'filters posts by user name' do
+        special_user = create_confirmed_user(name: 'SpecialSearchUser')
+        searchable_post = create(:post, user: special_user, title: 'Post Title', description: 'Post description here')
+
+        get '/api/v1/posts', params: { search: 'SpecialSearch' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts].size).to eq(1)
+        expect(json_response[:posts].first[:id]).to eq(searchable_post.id)
+      end
+
+      it 'filters posts by tag name' do
+        special_tag = create(:tag, name: 'uniquetag', color: '#ff0000')
+        searchable_post = create(:post, user: user, title: 'Tagged Post', description: 'Description here')
+        searchable_post.tags << special_tag
+
+        get '/api/v1/posts', params: { search: 'uniquetag' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts].size).to eq(1)
+        expect(json_response[:posts].first[:id]).to eq(searchable_post.id)
+      end
+
+      it 'is case insensitive' do
+        searchable_post = create(:post, user: user, title: 'CaseSensitiveTitle', description: 'Description')
+
+        get '/api/v1/posts', params: { search: 'casesensitivetitle' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts].size).to eq(1)
+      end
+
+      it 'returns empty array when no matches' do
+        get '/api/v1/posts', params: { search: 'nonexistentsearchterm' }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts]).to eq([])
+      end
+    end
+
+    context 'with tag_ids filter' do
+      it 'filters posts by single tag_id' do
+        tagged_post = posts.first
+        tagged_post.tags << tag1
+
+        get '/api/v1/posts', params: { tag_ids: tag1.id }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        post_ids = json_response[:posts].map { |p| p[:id] }
+        expect(post_ids).to include(tagged_post.id)
+        json_response[:posts].each do |post|
+          tag_ids = post[:tags].map { |t| t[:id] }
+          expect(tag_ids).to include(tag1.id)
+        end
+      end
+
+      it 'filters posts by multiple tag_ids' do
+        tagged_post = posts.first
+        tagged_post.tags << tag1
+
+        another_tagged_post = posts.second
+        another_tagged_post.tags << tag2
+
+        get '/api/v1/posts', params: { tag_ids: [ tag1.id, tag2.id ] }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        post_ids = json_response[:posts].map { |p| p[:id] }
+        expect(post_ids).to include(tagged_post.id, another_tagged_post.id)
+      end
+
+      it 'returns empty array when no posts have the tag' do
+        new_tag = create(:tag, name: 'newtag', color: '#000000')
+
+        get '/api/v1/posts', params: { tag_ids: new_tag.id }, headers: auth_headers(user)
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response[:posts]).to eq([])
       end
     end
   end
@@ -146,10 +256,19 @@ RSpec.describe 'Api::V1::Posts', type: :request do
     let!(:comments) { create_list(:comment, 5, commentable: post, user: other_user, description: 'Test comment') }
 
     context 'without authentication' do
+      it 'returns 401 unauthorized' do
+        get "/api/v1/posts/#{post.id}"
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(json_response[:error]).to eq('Unauthorized')
+      end
+    end
+
+    context 'with authentication' do
       it 'returns post with all details' do
         post.tags << [ tag1, tag2 ]
 
-        get "/api/v1/posts/#{post.id}"
+        get "/api/v1/posts/#{post.id}", headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:post]).to include(
@@ -162,14 +281,14 @@ RSpec.describe 'Api::V1::Posts', type: :request do
       end
 
       it 'includes all comments for the post' do
-        get "/api/v1/posts/#{post.id}"
+        get "/api/v1/posts/#{post.id}", headers: auth_headers(user)
 
         expect(response).to have_http_status(:ok)
         expect(json_response[:post][:last_three_comments].size).to eq(5)
       end
 
       it 'includes comment details with user' do
-        get "/api/v1/posts/#{post.id}"
+        get "/api/v1/posts/#{post.id}", headers: auth_headers(user)
 
         comment = json_response[:post][:last_three_comments].first
         expect(comment).to include(:id, :description, :created_at)
@@ -179,7 +298,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     context 'with non-existent post' do
       it 'returns 404 not found' do
-        get '/api/v1/posts/99999'
+        get '/api/v1/posts/99999', headers: auth_headers(user)
 
         expect(response).to have_http_status(:not_found)
         expect(json_response[:error]).to eq('Post not found')
@@ -465,7 +584,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
             post: {
               title: 'Important Update',
               description: 'Hey @alice and @bob, please check this out!',
-              tag_ids: [tag1.id]
+              tag_ids: [ tag1.id ]
             }
           }
 
@@ -476,7 +595,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
           expect(response).to have_http_status(:created)
 
           notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
-          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2 ])
           expect(notifications.all? { |n| n.actor == user }).to be true
           expect(notifications.all? { |n| n.notifiable_type == 'Post' }).to be true
         end
@@ -490,7 +609,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
             post: {
               title: 'Review Request',
               description: 'Please review @alice@example.com',
-              tag_ids: [tag1.id]
+              tag_ids: [ tag1.id ]
             }
           }
 
@@ -521,7 +640,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
           }.to change(Notification, :count).by(2)
 
           notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(2)
-          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2])
+          expect(notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2 ])
         end
       end
 
@@ -584,7 +703,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
           }.to change(Notification, :count).by(3)
 
           notifications = Notification.where(notification_type: 'mention').order(created_at: :desc).limit(3)
-          expect(notifications.map(&:user)).to match_array([mentioned_user1, mentioned_user2, mentioned_user3])
+          expect(notifications.map(&:user)).to match_array([ mentioned_user1, mentioned_user2, mentioned_user3 ])
         end
       end
 
@@ -609,7 +728,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
 
     describe 'PUT /api/v1/posts/:id with mentions' do
       let(:existing_post) do
-        create(:post, user: user, title: 'Original', description: 'No mentions', tag_ids: [tag1.id])
+        create(:post, user: user, title: 'Original', description: 'No mentions', tag_ids: [ tag1.id ])
       end
 
       context 'when updating post to add mentions' do
@@ -641,7 +760,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
             user: user,
             title: 'Original',
             description: 'Hey @alice',
-            tag_ids: [tag1.id]
+            tag_ids: [ tag1.id ]
           )
 
           # First mention creates notification
@@ -669,7 +788,7 @@ RSpec.describe 'Api::V1::Posts', type: :request do
             user: user,
             title: 'Original',
             description: 'Hey @alice',
-            tag_ids: [tag1.id]
+            tag_ids: [ tag1.id ]
           )
 
           # First mention

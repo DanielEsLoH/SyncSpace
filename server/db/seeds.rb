@@ -61,12 +61,12 @@ daniel_posts_data = [
   {
     title: "Building a Real-Time Social Platform with Rails and Next.js",
     description: "I recently completed SyncSpace, a modern social platform that demonstrates real-time features using ActionCable and WebSockets.\n\nKey features include:\n- Instant post updates across all clients\n- Real-time comment threads with unlimited nesting\n- Live reaction counts\n- WebSocket-based notification system\n\nThe tech stack includes Rails 8, Next.js 16, PostgreSQL, and Redis. All with 95% test coverage!",
-    tags: ["tech", "rails", "nextjs", "showcase"]
+    tags: [ "tech", "rails", "nextjs", "showcase" ]
   },
   {
     title: "Tips for Optimizing Rails API Performance",
     description: "After working on several Rails API projects, here are my top tips for keeping your API fast and efficient:\n\n1. Use counter caches for frequently accessed counts\n2. Implement strategic eager loading to avoid N+1 queries\n3. Add proper database indexes on foreign keys\n4. Use Redis for caching expensive operations\n5. Consider using Rack::Attack for rate limiting\n\nWhat are your favorite performance optimization techniques?",
-    tags: ["rails", "tutorial", "tech"]
+    tags: [ "rails", "tutorial", "tech" ]
   }
 ]
 

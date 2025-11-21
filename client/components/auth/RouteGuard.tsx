@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -27,21 +27,20 @@ export function RouteGuard({
 }: RouteGuardProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
 
     if (requireAuth && !isAuthenticated) {
       // User must be authenticated but isn't - redirect to landing page with auth modal
-      const redirect = redirectTo || `/?auth=login&redirect=${encodeURIComponent(pathname)}`;
+      const redirect = redirectTo || '/?auth=login';
       router.push(redirect);
     } else if (!requireAuth && isAuthenticated) {
       // User is authenticated but shouldn't be - redirect to feed
       const redirect = redirectTo || '/feed';
       router.push(redirect);
     }
-  }, [isAuthenticated, isLoading, requireAuth, redirectTo, pathname, router]);
+  }, [isAuthenticated, isLoading, requireAuth, redirectTo, router]);
 
   // Show loading state while checking authentication
   if (isLoading) {

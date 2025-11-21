@@ -47,11 +47,9 @@ export default function HomePage() {
   // Redirect authenticated users to feed
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      // Check if there's a redirect parameter
-      const redirectPath = searchParams.get('redirect');
-      router.push(redirectPath || '/feed');
+      router.push('/feed');
     }
-  }, [isAuthenticated, authLoading, router, searchParams]);
+  }, [isAuthenticated, authLoading, router]);
 
   // Show loading while checking auth
   if (authLoading) {

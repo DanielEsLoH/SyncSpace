@@ -9,8 +9,8 @@ class User < ApplicationRecord
 
   # Active Storage
   has_one_attached :avatar do |attachable|
-    attachable.variant :thumb, resize_to_limit: [100, 100]
-    attachable.variant :medium, resize_to_limit: [300, 300]
+    attachable.variant :thumb, resize_to_limit: [ 100, 100 ]
+    attachable.variant :medium, resize_to_limit: [ 300, 300 ]
   end
 
   # Store accessor for JSONB preferences column

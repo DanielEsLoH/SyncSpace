@@ -22,7 +22,7 @@ module Api
 
         # Search in name and email
         users = User.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
-                    .includes([:avatar_attachment])
+                    .includes([ :avatar_attachment ])
                     .order(created_at: :desc)
 
         total_count = users.count
