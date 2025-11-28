@@ -141,7 +141,8 @@
 - **Cloudinary**: Cloud-based image storage and CDN for production deployments
 - **Brevo (formerly Sendinblue)**: Transactional email service via API for user authentication flows (confirmation & password reset emails)
 - **Vercel**: Production frontend hosting with automatic deployments
-- **Render**: Production backend hosting with managed PostgreSQL and Redis
+- **Render**: Production backend hosting with managed Redis
+- **Supabase**: Production PostgreSQL database with connection pooling and SSL
 
 ---
 
@@ -225,8 +226,16 @@ Ensure you have the following installed:
    ```
    Then edit `server/.env` with your settings:
    ```ini
-   # For local development: Leave DATABASE_URL and REDIS_URL commented out
-   # (uses config/database.yml defaults: localhost PostgreSQL and Redis)
+   # Database - Supabase PostgreSQL
+   # For LOCAL development: Comment out DATABASE_URL to use config/database.yml (localhost)
+   # For PRODUCTION: Use Supabase connection pooler (port 6543) with SSL
+   # Get from: Supabase Dashboard → Project Settings → Database → Connection String
+   # Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?sslmode=require
+   # DATABASE_URL=postgresql://postgres.your_project:your_password@aws-0-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require
+
+   # Redis
+   # For local development: Leave commented out (uses redis://localhost:6379/0)
+   # REDIS_URL=redis://localhost:6379/0
 
    # JWT Secret (generate with: rails secret)
    JWT_SECRET_KEY=your_super_secret_jwt_key_change_this_in_production
@@ -602,8 +611,11 @@ cd server
 # Create a new migration
 rails generate migration AddColumnToTable column_name:type
 
-# Run pending migrations
+# Run pending migrations (development)
 rails db:migrate
+
+# Run migrations in test environment
+RAILS_ENV=test rails db:migrate
 
 # Rollback last migration
 rails db:rollback
@@ -614,9 +626,26 @@ rails db:rollback STEP=3
 # Reset database (drop, create, migrate, seed)
 rails db:reset
 
+# Setup test database (first time or after schema changes)
+RAILS_ENV=test rails db:drop db:create db:migrate
+
 # Open PostgreSQL console
 rails dbconsole
 ```
+
+**Database Extensions**
+
+SyncSpace uses PostgreSQL extensions for advanced features:
+
+- **`plpgsql`**: PostgreSQL procedural language (enabled by default)
+- **`pg_trgm`**: Trigram-based fuzzy text search for posts, users, and tags
+
+The `pg_trgm` extension is automatically installed using an idempotent migration:
+```ruby
+execute 'CREATE EXTENSION IF NOT EXISTS pg_trgm'
+```
+
+This works on both local PostgreSQL and Supabase (which already has `pg_trgm` available). Supabase-specific extensions like `pg_graphql`, `supabase_vault`, etc. are **not required** for the Rails app and are intentionally excluded from `schema.rb` to maintain compatibility with local development.
 
 ### Code Quality
 
@@ -795,8 +824,13 @@ Ensure these are set in your production environment:
 # Rails environment
 RAILS_ENV=production
 
-# Database & Redis
-DATABASE_URL=postgresql://user:password@host:5432/syncspace_production
+# Database - Supabase PostgreSQL (Connection Pooler with SSL)
+# Get from: Supabase Dashboard → Project Settings → Database → Connection String
+# Enable "Use connection pooling" and select "Transaction" mode
+# Use port 6543 (pooler) for better performance and connection management
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?sslmode=require
+
+# Redis
 REDIS_URL=redis://user:password@host:6379/0
 
 # Secrets (generate with: rails secret)
@@ -892,13 +926,17 @@ curl -X POST http://localhost:3001/api/v1/auth/refresh \
 
 #### Tests Failing
 
-**Symptom**: Random test failures or database-related errors
+**Symptom**: Random test failures, database-related errors, or extension errors like `pg_graphql is not available`
 
 **Solution**:
 ```bash
-# Reset test database
 cd server
+
+# Reset test database
 RAILS_ENV=test rails db:drop db:create db:migrate
+
+# Install required extensions (for local PostgreSQL)
+psql -d syncspace_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
 # Clear test cache
 rm -rf tmp/cache/
@@ -906,6 +944,28 @@ rm -rf tmp/cache/
 # Run tests again
 bundle exec rspec
 ```
+
+**Note**: If you see errors about Supabase-specific extensions (`pg_graphql`, `supabase_vault`, etc.), ensure your `db/schema.rb` only includes `plpgsql` and `pg_trgm`. These Supabase extensions are not needed for the Rails app and should not be in your schema.
+
+#### Supabase Connection Issues
+
+**Symptom**: `could not translate host name` or database connection timeouts with Supabase
+
+**Solution**:
+1. **Check Supabase project status**: Ensure your Supabase project is not paused (free tier auto-pauses after 7 days of inactivity)
+2. **Verify connection string**: Use the **pooler** connection string (port 6543), not direct connection (port 5432)
+   ```bash
+   # Correct (pooler with SSL)
+   DATABASE_URL=postgresql://postgres.[ref]:[pass]@aws-0-[region].pooler.supabase.com:6543/postgres?sslmode=require
+
+   # Incorrect (direct connection may not resolve)
+   DATABASE_URL=postgresql://postgres:[pass]@db.[ref].supabase.co:5432/postgres
+   ```
+3. **Enable SSL**: Always include `?sslmode=require` for Supabase connections
+4. **Test connection**:
+   ```bash
+   psql "$DATABASE_URL" -c "SELECT version();"
+   ```
 
 #### Docker Issues
 
