@@ -647,6 +647,17 @@ execute 'CREATE EXTENSION IF NOT EXISTS pg_trgm'
 
 This works on both local PostgreSQL and Supabase (which already has `pg_trgm` available). Supabase-specific extensions like `pg_graphql`, `supabase_vault`, etc. are **not required** for the Rails app and are intentionally excluded from `schema.rb` to maintain compatibility with local development.
 
+**Important: Prepared Statements**
+
+When using Supabase's connection pooler (PgBouncer in transaction mode), prepared statements must be disabled:
+```yaml
+# config/database.yml
+production:
+  prepared_statements: false
+```
+
+This is already configured in the project. PgBouncer in transaction mode does not support prepared statements across transactions, which would otherwise cause errors like "prepared statement already exists" or "prepared statement does not exist".
+
 ### Code Quality
 
 #### Backend (RuboCop)
