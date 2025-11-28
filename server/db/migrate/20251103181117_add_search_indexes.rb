@@ -15,7 +15,8 @@
 class AddSearchIndexes < ActiveRecord::Migration[8.0]
   def up
     # Enable the pg_trgm extension for trigram-based text search
-    enable_extension 'pg_trgm'
+    # This is idempotent - safe to run on Supabase where it may already exist
+    execute 'CREATE EXTENSION IF NOT EXISTS pg_trgm'
 
     # Posts table indexes
     # Used for searching posts by title and description
