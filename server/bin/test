@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run tests with local database (ignore DATABASE_URL from .env)
+#
+# Usage:
+#   bin/test                  # Run all tests
+#   bin/test spec/models      # Run specific directory
+#   bin/test spec/models/user_spec.rb:10  # Run specific test
+#
+# Explicitly set DATABASE_URL to local test database to prevent
+# dotenv from loading the production Supabase URL from .env
+
+DATABASE_URL="postgresql://localhost/syncspace_test" bundle exec rspec "$@"

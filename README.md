@@ -569,22 +569,33 @@ For complete API documentation with request/response examples, see [**docs/API.m
 
 #### Backend Tests (RSpec)
 
+**IMPORTANT**: Always use `bin/test` instead of `bundle exec rspec` directly. This ensures tests always run against your local PostgreSQL database, even if `DATABASE_URL` is set in `.env` to point to production.
+
 ```bash
-# Run all tests
 cd server
-bundle exec rspec
+
+# Run all tests (RECOMMENDED - uses local database)
+bin/test
 
 # Run specific test file
-bundle exec rspec spec/models/user_spec.rb
+bin/test spec/models/user_spec.rb
+
+# Run specific test at line number
+bin/test spec/models/user_spec.rb:42
 
 # Run with coverage report
-COVERAGE=true bundle exec rspec
+COVERAGE=true bin/test
 
 # View coverage report
 open coverage/index.html
 ```
 
-**Current Coverage**: 92% (see `server/coverage/index.html`)
+**Why use `bin/test`?**
+- Tests drop, create, and truncate databases - running against production would destroy data
+- The `bin/test` script explicitly sets `DATABASE_URL` to your local test database
+- This protects production even when working with `DATABASE_URL` set in `.env`
+
+**Current Coverage**: 95.87% (882 examples, see `server/coverage/index.html`)
 
 #### Frontend Tests (Jest)
 
@@ -952,9 +963,11 @@ psql -d syncspace_test -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 # Clear test cache
 rm -rf tmp/cache/
 
-# Run tests again
-bundle exec rspec
+# Run tests again (always use bin/test, NOT bundle exec rspec)
+bin/test
 ```
+
+**CRITICAL**: Always use `bin/test` instead of `bundle exec rspec` directly. The `bin/test` script ensures tests run against your local database, protecting production from accidental data loss.
 
 **Note**: If you see errors about Supabase-specific extensions (`pg_graphql`, `supabase_vault`, etc.), ensure your `db/schema.rb` only includes `plpgsql` and `pg_trgm`. These Supabase extensions are not needed for the Rails app and should not be in your schema.
 
@@ -977,6 +990,61 @@ bundle exec rspec
    ```bash
    psql "$DATABASE_URL" -c "SELECT version();"
    ```
+
+#### Working with Production Database (Advanced)
+
+**Scenario**: You need to temporarily work with the production database for seeding, data verification, or troubleshooting.
+
+**CRITICAL SAFETY**:
+- Tests drop, create, and truncate databases
+- Running tests against production would **destroy all production data**
+- **ALWAYS** use `bin/test` for running tests (never `bundle exec rspec`)
+
+**Workflow**:
+
+1. **Enable production database access** (in `server/.env`):
+   ```bash
+   # Uncomment DATABASE_URL to work with production
+   DATABASE_URL=postgresql://postgres.[ref]:[pass]@aws-0-[region].pooler.supabase.com:6543/postgres?sslmode=require
+   ```
+
+2. **Work with production safely**:
+   ```bash
+   cd server
+
+   # Seed production database
+   rails db:seed
+
+   # Open production console (be careful!)
+   rails console
+
+   # Run production migrations
+   rails db:migrate
+   ```
+
+3. **Run tests** (they will automatically use local database):
+   ```bash
+   # SAFE - bin/test always uses local database
+   bin/test
+
+   # DANGER - would attempt to use production database from .env
+   bundle exec rspec  # ❌ NEVER DO THIS
+   ```
+
+4. **Return to local development** (in `server/.env`):
+   ```bash
+   # Comment out DATABASE_URL to use local PostgreSQL
+   # DATABASE_URL=postgresql://...
+   ```
+
+**How `bin/test` protects you**:
+```bash
+#!/usr/bin/env bash
+# Explicitly sets DATABASE_URL to local test database
+DATABASE_URL="postgresql://localhost/syncspace_test" bundle exec rspec "$@"
+```
+
+This ensures tests **always** run against `localhost/syncspace_test`, regardless of what's in `.env`.
 
 #### Docker Issues
 

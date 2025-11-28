@@ -26,6 +26,9 @@ default: &default
 development:
   <<: *default
   database: syncspace_development
+  # When DATABASE_URL points to Supabase pooler, disable prepared statements
+  # (PgBouncer in transaction mode doesn't support them)
+  prepared_statements: false
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.
@@ -58,8 +61,14 @@ development:
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
-  <<: *default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   database: syncspace_test
+  host: localhost
+  # CRITICAL: Test environment must NEVER use DATABASE_URL (which points to production)
+  # Tests drop/create/truncate databases - this would destroy production data!
+  # We explicitly set all connection parameters to force local PostgreSQL usage
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
